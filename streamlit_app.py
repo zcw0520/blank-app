@@ -1,13 +1,13 @@
-import streamlit as st
 import json, os
+import streamlit as st
 
 # ========== 課程結構 ==========
 course_structure = {
     "總體要求": {
         "畢業總學分": 128,
         "系訂必修學分": 56,
-        "共同必修學分": 12,
-        "通識學分": 24,
+        "共同必修學分": 9,  # 國文+英文共9學分
+        "通識學分": 15,
         "總選修學分": 48,
         "系內選修最低學分": 16,
         "通識至少領域數": 3
@@ -106,69 +106,28 @@ def delete_course(name):
     else:
         return f"⚠️ 找不到課程：{name}"
 
-def credits_by_category():
-    data = load_data()
-    cat_credits = {cat:0 for cat in course_structure["課程"]}
-    cat_credits["自由選修"] = 0
-    for c, info in data["已修課程"].items():
-        domain = info.get("領域")
-        if domain and domain.startswith("A"):  # 通識
-           cat_credits["通識課程"] += info["學分"]
-        else:
-            found = False
-            for cat, courses in course_structure["課程"].items():
-                if cat=="通識課程":
-                    continue
-                if c in courses:
-                    cat_credits[cat] += info["學分"]
-                    found = True
-                    break
-            if not found:
-                cat_credits["自由選修"] += info["學分"]
-    return cat_credits
-
+# ========== 畢業檢查 ==========
 def graduation_check():
     d = load_data()
     req = course_structure["總體要求"]
-
     results = []
-    # 總學分
-    total = sum(info["學分"] for c, info in d["已修課程"].items())
-    results.append(f"總學分：{total} / {req['畢業總學分']}")
 
-    # 系訂必修
-    required_courses = course_structure["課程"]["系訂必修"]
-    taken_required = sum(info["學分"] for c, info in d["已修課程"].items() if c in required_courses)
-    missing_required = [c for c in required_courses if c not in d["已修課程"]]
-    results.append(f"系訂必修：{taken_required} / {req['系訂必修學分']}")
-    if missing_required:
-        results.append("▶️ 還沒修的系訂必修課程：" + "、".join(missing_required))
-
-    # 共同必修
     common_required = course_structure["課程"]["共同必修"]
+    required_courses = course_structure["課程"]["系訂必修"]
+    elective_courses = course_structure["課程"]["系內選修"]
+
     taken_common = sum(info["學分"] for c, info in d["已修課程"].items() if c in common_required)
     missing_common = [c for c in common_required if c not in d["已修課程"]]
-    results.append(f"共同必修：{taken_common} / {req['共同必修學分']}")
-    if missing_common:
-        results.append("▶️ 還沒修的共同必修課程：" + "、".join(missing_common))
 
-    # 系內選修
-    elective_courses = course_structure["課程"]["系內選修"]
+    taken_required = sum(info["學分"] for c, info in d["已修課程"].items() if c in required_courses)
+    missing_required = [c for c in required_courses if c not in d["已修課程"]]
+
     taken_elective = sum(info["學分"] for c, info in d["已修課程"].items() if c in elective_courses)
-    missing_elective_credit = max(req["系內選修最低學分"] - taken_elective, 0)
-    results.append(f"系內選修：{taken_elective} / {req['系內選修最低學分']} 學分")
-    if missing_elective_credit > 0:
-        results.append(f"⭐️ 還要修 {missing_elective_credit} 學分的系內選修！")
+    free_elective = sum(info["學分"] for c, info in d["已修課程"].items()
+                        if c not in elective_courses and c not in required_courses and c not in common_required and not (info.get("領域","").startswith("A")))
+    total_elective = taken_elective + free_elective
 
-    # 總選修
-    cat_credits = credits_by_category()
-    total_elective = cat_credits["系內選修"] + cat_credits["自由選修"]
-    missing_total_elective = max(req["總選修學分"] - total_elective, 0)
-    results.append(f"總選修：{total_elective} / {req['總選修學分']}")
-    if missing_total_elective > 0:
-        results.append(f"⭐️ 還要修 {missing_total_elective} 學分的選修！")
-
-    # 通識
+    # 通識學分與國文抵扣
     ge_total = 0
     ge_domains = set()
     for c, info in d["已修課程"].items():
@@ -176,16 +135,42 @@ def graduation_check():
         if domain and domain.startswith("A"):
             ge_total += info["學分"]
             ge_domains.add(domain)
-    results.append(f"通識：{ge_total} / {req['通識學分']} 學分，涵蓋領域數 {len(ge_domains)} / {req['通識至少領域數']}")
-    if ge_total < req["通識學分"]:
-        results.append(f"⭐️ 通識還差 {req['通識學分'] - ge_total} 學分")
+
+    chinese_credit = 0
+    if "國文上" in d["已修課程"]:
+        chinese_credit += 3
+    if "國文下" in d["已修課程"]:
+        chinese_credit += 3
+
+    deductible = 0
+    for dom in ["A1","A2","A3","A4"]:
+        for c, info in d["已修課程"].items():
+            if info.get("領域")==dom:
+                deductible = min(chinese_credit,3)
+                break
+
+    actual_ge = max(ge_total - deductible,0)
+
+    total_credits = taken_common + actual_ge + taken_required + total_elective
+    results.append(f"總畢業學分：{total_credits} / {req['畢業總學分']}")
+
+    if missing_common:
+        results.append("▶️ 還沒修的共同必修課程：" + "、".join(missing_common))
+    if missing_required:
+        results.append("▶️ 還沒修的系訂必修課程：" + "、".join(missing_required))
+    if taken_elective < req["系內選修最低學分"]:
+        results.append(f"⭐️ 還要修 {req['系內選修最低學分'] - taken_elective} 學分的系內選修！")
+    if total_elective < req["總選修學分"]:
+        results.append(f"⭐️ 還要修 {req['總選修學分'] - total_elective} 學分的選修！")
+    if actual_ge < req["通識學分"]:
+        results.append(f"⭐️ 通識還差 {req['通識學分'] - actual_ge} 學分，涵蓋領域數 {len(ge_domains)} / {req['通識至少領域數']}")
 
     return results
 
 # ========== Streamlit UI ==========
 st.title("🎓 學分檢查工具")
 
-menu = st.sidebar.radio("功能選擇", ["新增課程", "刪除課程", "已修課程列表", "各類別學分", "畢業檢查"])
+menu = st.sidebar.radio("功能選擇", ["新增課程", "刪除課程", "已修課程列表", "畢業檢查"])
 
 if menu == "新增課程":
     name = st.text_input("課程名稱")
@@ -206,12 +191,6 @@ elif menu == "已修課程列表":
     d = load_data()
     for c, info in d["已修課程"].items():
         st.write(f"- {c} ({info['學分']} 學分) 領域：{info.get('領域','無')}")
-
-elif menu == "各類別學分":
-    st.subheader("📊 各類別學分")
-    stats = credits_by_category()
-    for k,v in stats.items():
-        st.write(f"{k}: {v}")
 
 elif menu == "畢業檢查":
     st.subheader("✅ 畢業條件檢查")
