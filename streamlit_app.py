@@ -126,6 +126,13 @@ def graduation_check():
     free_elective = sum(info["學分"] for c, info in d["已修課程"].items()
                         if c not in elective_courses and c not in required_courses and c not in common_required and not (info.get("領域","").startswith("A")))
     total_elective = taken_elective + free_elective
+   # 計算已修共同必修
+   common_required = course_structure["課程"]["共同必修"]
+   taken_common_courses = [c for c in common_required if c in d["已修課程"]]
+   taken_common = sum(d["已修課程"][c]["學分"] for c in taken_common_courses)
+   results.append(f"共同必修：已修 {len(taken_common_courses)} / 9 門課，共 {taken_common} 學分")
+   if missing_common := [c for c in common_required if c not in d["已修課程"]]:
+    results.append("▶️ 還沒修的共同必修課程：" + "、".join(missing_common))
 
     # 通識學分與國文抵扣
     ge_total = 0
