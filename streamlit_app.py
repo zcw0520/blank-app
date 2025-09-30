@@ -1,60 +1,172 @@
-import json, os
+import json
+import os
+import difflib
 import streamlit as st
 
-# ========== 課程結構 ==========
-course_structure = {
-    "總體要求": {
-        "畢業總學分": 128,
-        "系訂必修學分": 56,
-        "共同必修學分": 9,
-        "通識學分": 15,
-        "總選修學分": 48,
-        "系內選修最低學分": 16,
-        "通識至少領域數": 3
+DATA_FILE = "courses.json"
+EXTERNAL_COURSES_FILE = "my_courses.json"
+
+# ================== 課程結構 ==================
+default_course_structure = {
+    "校核心必修": {
+        "中文閱讀與書寫(一)": 2,
+        "中文閱讀與書寫(二)": 2,
+        "英文(一)": 2,
+        "英文(二)": 2,
+        "體育(一)": 1,
+        "體育(二)": 1
     },
-    "課程": {
-        "共同必修": {
-            "國文上": 3, "英文一": 3, "英文二": 3, "進階英文一": 0, "進階英文二": 0,
-            "體育一": 0, "體育二": 0, "體育三": 0, "體育四": 0,
-            "服務學習甲": 0, "服務學習乙": 0
-        },
-        "系訂必修": {
-            "微積分1": 2, "微積分2": 2, "微積分3": 2, "微積分4": 2,
-            "普通物理學甲上": 3, "普通物理學甲下": 3,
-            "普通物理學實驗上": 1, "普通物理學實驗下": 1,
-            "普通化學一": 3, "普通化學二": 3,
-            "化學實驗一": 1, "化學實驗二": 1,
-            "分析化學一": 3, "分析化學二": 3,
-            "有機化學一": 3, "有機化學二": 3,
-            "化學實驗三": 2, "化學實驗四": 2,
-            "物理化學二-量子化學": 3,
-            "物理化學一-熱力學": 3,
-            "化學實驗五": 2,
-            "無機化學一": 3, "無機化學二": 3,
-            "書報討論一": 1, "書報討論二": 1
-        },
-        "系內選修": {
-            "大三專題討論一": 1, "大三專題討論二": 1,
-            "大三專題研究一": 3, "大三專題研究二": 3,
-            "大四專題討論一": 1, "大四專題討論二": 1,
-            "大四專題研究一": 3, "大四專題研究二": 3,
-            "大四論文": 1, "分析化學三": 3,
-            "有機化學三": 3, "物理化學三-動力學": 3,
-            "生物化學": 3, "材料化學": 3,
-            "化學鍵": 2, "化學生物學": 2,
-            "化學數學二": 2, "生物物理化學導論": 3,
-            "有機合成": 3, "光學方法在生物研究之應用": 3
-        },
-        "通識課程": {
-            "A1": {}, "A2": {}, "A3": {}, "A4": {},
-            "A5": {}, "A6": {}, "A7": {}, "A8": {}
-        }
-    }
+    "院核心必修": {
+        "組織與社會": 2,
+        "運算思維與程式設計": 2
+    },
+    "系基礎必修": {
+        "政治學": 3,
+        "行政學": 3,
+        "經濟學": 3,
+        "法學緒論": 3,
+        "中華民國憲法與政府": 3,
+        "管理學": 3,
+        "統計學": 3,
+        "社會科學研究法": 3,
+        "專題與實習": 3
+    },
+    "系基礎選修": {
+        "企業概論": 3,
+        "社會學": 3,
+        "會計學": 3,
+        "應用統計學": 3,
+        "行政管理理論": 2,
+        "政治經濟學": 3,
+        "行政法(一)": 2,
+        "民法(一)": 2,
+        "行政法(二)": 2,
+        "民法(二)": 2,
+        "財政學": 3,
+        "公共經濟學": 3,
+        "刑法": 3,
+        "第三部門": 2,
+        "專門議題研究": 2,
+        "國際關係": 2,
+        "專業英文": 2
+    },
+    "組織管理學群": {
+        "組織理論與管理": 3,
+        "公共管理": 2,
+        "組織行為": 3,
+        "人力資源管理": 3,
+        "比較政府與政治": 2,
+        "人力資源與組織發展": 3,
+        "績效與薪酬管理": 3,
+        "人事行政": 3,
+        "政策與正義": 2,
+        "電子治理": 2,
+        "管理行政實務": 2
+    },
+    "公私決策學群": {
+        "公共政策(一)": 2,
+        "公共政策(二)": 2,
+        "兩岸關係": 2,
+        "創意與創新管理": 2,
+        "政策規劃": 2,
+        "問題分析與決策": 2,
+        "民意調查": 2,
+        "策略規劃與管理": 3,
+        "政策執行與評估": 2,
+        "決策與判斷分析": 2,
+        "危機管理": 2,
+        "公共事務管理個案分析": 2
+    },
+    "地區發展與行銷學群": {
+        "行銷管理": 3,
+        "消費者行為": 3,
+        "都市與地方治理": 3,
+        "文化產業行銷": 2,
+        "服務行銷": 3,
+        "政府談判": 3,
+        "政治管理": 2,
+        "地區經營管理": 2,
+        "地方發展與地區行銷": 2,
+        "廣告媒體": 3,
+        "政策行銷": 3,
+        "跨域管理": 2,
+        "公益創投與社會行銷": 3
+    },
+    "文史哲藝術領域": {
+        "美國文化": 2,
+        "英文小品文賞析": 2,
+        "英語口語表達技巧": 2,
+        "旅遊英文": 2,
+        "時事英文": 2,
+        "英文口語表達技巧": 2,
+        "職場英文": 2,
+        "小說與社會關懷": 2,
+        "文學與現代生活": 2,
+        "臺灣經典文獻選讀": 2,
+        "經典文學導讀": 2,
+        "臺灣歷史與文化": 2,
+        "影像藝術思維": 2,
+        "攝影藝術": 2,
+        "空間美學": 2,
+        "音樂與人生": 2,
+        "表演藝術欣賞": 2
+    },
+    "社會脈動領域": {
+        "法律素養": 2,
+        "犯罪、法律與人權": 2,
+        "亞太地區地緣政治與中國": 2,
+        "政治學概要": 2,
+        "國際關係發展與理論": 2,
+        "臺灣主權地位的國際觀": 2,
+        "職場與法律": 2,
+        "服務學習與社會關懷": 2,
+        "理財規劃": 2,
+        "管理學概論": 2,
+        "領導藝術": 2
+    },
+    "生命科學領域": {
+        "ESG與永續生活設計": 2,
+        "水資源利用與保育": 2,
+        "臺灣自然保育議題": 2,
+        "海洋生命科學導論": 2,
+        "生命教育": 2,
+        "大學生的幸福學": 2,
+        "生死學": 2,
+        "生物科技的應用": 2,
+        "運動與人生": 2,
+        "運動的藝術與實踐": 2
+    },
+    "科技探索領域": {
+        "AI人文藝術之應用": 2,
+        "AI遇見設計思考": 2,
+        "大數據分析概論": 2,
+        "生成式AI之運用": 2,
+        "計算機概論與 Python 程式設計": 2,
+        "機器學習概論": 2,
+        "機器人思維與設計": 2,
+        "網路資料探勘與分析": 2,
+        "網頁設計與網站建置概論": 2,
+        "物聯網應用": 2,
+        "行動裝置程式設計": 2
+    },
+    "通識不分領域": {
+        "博雅教育講座": 2
+    },
+    "自由選修": {}
 }
 
-DATA_FILE = "ntu_my_courses.json"
+# ================== 資料存取 ==================
+def load_course_structure():
+    if os.path.exists(EXTERNAL_COURSES_FILE):
+        try:
+            with open(EXTERNAL_COURSES_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return default_course_structure
 
-# ========== 資料操作 ==========
+course_structure = load_course_structure()
+
 def init_data():
     if not os.path.exists(DATA_FILE):
         save_data({"已修課程": {}})
@@ -69,139 +181,101 @@ def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-def find_course(name):
-    for cat, courses in course_structure["課程"].items():
-        if cat == "通識課程":
-            for domain, domain_courses in courses.items():
-                if name in domain_courses:
-                    return cat, name, domain_courses[name]
-        else:
-            if name in courses:
-                return cat, name, courses[name]
+# ================== 工具 ==================
+def find_course(course_name):
+    for cat, courses in course_structure.items():
+        if course_name in courses:
+            return cat, course_name, courses[course_name]
+    all_names = []
+    for cat, courses in course_structure.items():
+        all_names += list(courses.keys())
+    matches = difflib.get_close_matches(course_name, all_names, n=3, cutoff=0.6)
+    if matches:
+        best = matches[0]
+        for cat, courses in course_structure.items():
+            if best in courses:
+                return cat, best, courses[best]
     return None, None, None
 
-def add_course(name, credit=None, domain=None):
+def total_credits():
     data = load_data()
-    if name in data["已修課程"]:
-        return f"⚠️ 已登錄過：{name}"
-    cat, cname, ccredit = find_course(name)
-    if cname:
-        data["已修課程"][cname] = {"學分": ccredit, "領域": None}
-        save_data(data)
-        return f"✅ 已新增：{cname}（{ccredit} 學分），分類：{cat}"
-    else:
-        if credit is None:
-            return f"⚠️ {name} 需要輸入學分！"
-        data["已修課程"][name] = {"學分": credit, "領域": domain if domain else None}
-        save_data(data)
-        return f"✅ 已新增：{name}（{credit} 學分），領域：{domain if domain else '無'}"
+    return sum(data["已修課程"].values())
 
-def delete_course(name):
+def check_three_core_groups():
     data = load_data()
-    if name in data["已修課程"]:
-        del data["已修課程"][name]
-        save_data(data)
-        return f"🗑 已刪除課程：{name}"
+    taken = data["已修課程"]
+    result = {}
+    for group in ["組織管理學群", "公私決策學群", "地區發展與行銷學群"]:
+        total = 0
+        for c, cr in taken.items():
+            if c in course_structure.get(group, {}):
+                total += cr
+        result[group] = total
+    return result
+
+def check_general_ed():
+    data = load_data()
+    taken = data["已修課程"]
+    domains = ["文史哲藝術領域", "社會脈動領域", "生命科學領域", "科技探索領域"]
+    domain_credits = {d: 0 for d in domains}
+    for c, cr in taken.items():
+        for d in domains:
+            if c in course_structure.get(d, {}):
+                domain_credits[d] += cr
+    return domain_credits
+
+# ================== Streamlit App ==================
+st.set_page_config(page_title="畢業學分檢查系統", layout="wide")
+st.title("🎓 畢業學分檢查系統")
+
+data = load_data()
+
+# === 功能選單 ===
+tab1, tab2 = st.tabs(["➕ 加入課程", "📊 畢業檢查"])
+
+with tab1:
+    st.subheader("新增已修課程")
+    course_input = st.text_input("課程名稱")
+    if st.button("加入"):
+        if course_input:
+            cat, cname, credit = find_course(course_input)
+            if cname:
+                data["已修課程"][cname] = credit
+                save_data(data)
+                st.success(f"✅ 已加入 {cname} ({credit}學分)")
+            else:
+                st.error("❌ 找不到課程，請確認名稱")
+
+    if st.button("清除所有已修課程"):
+        save_data({"已修課程": {}})
+        st.warning("⚠️ 已清空資料")
+
+    st.subheader("📖 已修課程列表")
+    if data["已修課程"]:
+        for c, cr in data["已修課程"].items():
+            st.write(f"- {c} ({cr} 學分)")
     else:
-        return f"⚠️ 找不到課程：{name}"
+        st.write("尚未加入課程")
 
-# ========== 畢業檢查 ==========
-def graduation_check():
-    d = load_data()
-    req = course_structure["總體要求"]
-    results = []
+with tab2:
+    st.subheader("📊 畢業檢查報告")
+    total = total_credits()
+    st.metric("已修總學分", total)
 
-    # 課程分類
-    common_required = course_structure["課程"]["共同必修"]
-    required_courses = course_structure["課程"]["系訂必修"]
-    elective_courses = course_structure["課程"]["系內選修"]
+    # 系核心學群
+    st.write("### 📚 系核心學群檢查")
+    three_groups = check_three_core_groups()
+    cols = st.columns(3)
+    for i, (g, cr) in enumerate(three_groups.items()):
+        with cols[i]:
+            st.metric(g, f"{cr} 學分", delta=f"需求 ≥ 6 學分")
 
-    # 已修共同必修
-    taken_common_courses = [c for c in common_required if c in d["已修課程"]]
-    taken_common = sum(d["已修課程"][c]["學分"] for c in taken_common_courses)
-    missing_common = [c for c in common_required if c not in d["已修課程"]]
-    results.append(f"共同必修：已修 {len(taken_common_courses)} / 9 學分")
-    if missing_common:
-        results.append("▶️ 還沒修的共同必修課程：" + "、".join(missing_common))
+    # 通識
+    st.write("### 🌍 通識領域檢查")
+    ge = check_general_ed()
+    cols = st.columns(4)
+    for i, (d, cr) in enumerate(ge.items()):
+        with cols[i]:
+            st.metric(d, f"{cr} 學分", delta="需求 ≥ 2 學分")
 
-    # 已修系訂必修
-    taken_required = sum(info["學分"] for c, info in d["已修課程"].items() if c in required_courses)
-    missing_required = [c for c in required_courses if c not in d["已修課程"]]
-    results.append(f"系訂必修：已修 {taken_required} / {req['系訂必修學分']} 學分")
-    if missing_required:
-        results.append("▶️ 還沒修的系訂必修課程：" + "、".join(missing_required))
-
-    # 系內選修
-    taken_elective = sum(info["學分"] for c, info in d["已修課程"].items() if c in elective_courses)
-    free_elective = sum(info["學分"] for c, info in d["已修課程"].items()
-                        if c not in elective_courses and c not in required_courses and c not in common_required and not (info.get("領域","").startswith("A")))
-    total_elective = taken_elective + free_elective
-    results.append(f"系內/自由選修：已修 {total_elective} / {req['總選修學分']} 學分")
-    if taken_elective < req["系內選修最低學分"]:
-        results.append(f"⭐️ 還要修 {req['系內選修最低學分'] - taken_elective} 學分的系內選修！")
-    if total_elective < req["總選修學分"]:
-        results.append(f"⭐️ 還要修 {req['總選修學分'] - total_elective} 學分的選修！")
-
-    # 通識學分與國文抵扣
-    ge_total = 0
-    ge_domains = set()
-    for c, info in d["已修課程"].items():
-        domain = info.get("領域")
-        if domain and domain.startswith("A"):
-            ge_total += info["學分"]
-            ge_domains.add(domain)
-
-    chinese_credit = 0
-    if "國文上" in d["已修課程"]:
-        chinese_credit += 3
-    if "國文下" in d["已修課程"]:
-        chinese_credit += 3
-
-    deductible = 0
-    for dom in ["A1","A2","A3","A4"]:
-        for c, info in d["已修課程"].items():
-            if info.get("領域")==dom:
-                deductible = min(chinese_credit,3)
-                break
-
-    actual_ge = max(ge_total - deductible,0)
-    results.append(f"通識：已修 {actual_ge} / {req['通識學分']} 學分，涵蓋領域數 {len(ge_domains)} / {req['通識至少領域數']}")
-    if actual_ge < req["通識學分"]:
-        results.append(f"⭐️ 通識還差 {req['通識學分'] - actual_ge} 學分")
-
-    # 總畢業學分（包含共同必修 + 通識 + 系訂必修 + 選修）
-    total_credits = taken_common + actual_ge + taken_required + total_elective
-    results.insert(0, f"總畢業學分：{total_credits} / {req['畢業總學分']}")
-
-    return results
-# ========== Streamlit UI ==========
-st.title("🎓 學分檢查工具")
-
-menu = st.sidebar.radio("功能選擇", ["新增課程", "刪除課程", "已修課程列表", "畢業檢查"])
-
-if menu == "新增課程":
-    name = st.text_input("課程名稱")
-    credit = st.number_input("學分（若課程結構已有，這裡可留 0）", min_value=0, max_value=10, value=0)
-    domain = st.text_input("通識領域（A1–A8，非通識可留空）")
-    if st.button("新增"):
-        msg = add_course(name, credit if credit>0 else None, domain if domain else None)
-        st.success(msg)
-
-elif menu == "刪除課程":
-    name = st.text_input("要刪除的課程名稱")
-    if st.button("刪除"):
-        msg = delete_course(name)
-        st.success(msg)
-
-elif menu == "已修課程列表":
-    st.subheader("📚 已修課程")
-    d = load_data()
-    for c, info in d["已修課程"].items():
-        st.write(f"- {c} ({info['學分']} 學分) 領域：{info.get('領域','無')}")
-
-elif menu == "畢業檢查":
-    st.subheader("✅ 畢業條件檢查")
-    results = graduation_check()
-    for r in results:
-        st.write(r)
-
+    st.write("⚠️ 系核心必修、選修與通識的最低學分需求可依學校規定修改。")
