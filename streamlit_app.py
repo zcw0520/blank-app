@@ -52,7 +52,9 @@ course_structure = {
     }
 }
 
-DATA_FILE = "ntu_my_courses.json"
+# ========== 固定 JSON 檔案路徑 ==========
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # 取得程式所在資料夾
+DATA_FILE = os.path.join(BASE_DIR, "ntu_my_courses.json")
 
 # ========== 資料操作 ==========
 def init_data():
@@ -174,6 +176,7 @@ def graduation_check():
     results.insert(0, f"總畢業學分：{total_credits} / {req['畢業總學分']}")
 
     return results
+
 # ========== Streamlit UI ==========
 st.title("🎓 學分檢查工具")
 
@@ -205,3 +208,4 @@ elif menu == "畢業檢查":
     for r in results:
         st.write(r)
 
+st.caption(f"📂 資料檔案儲存在：{DATA_FILE}")
