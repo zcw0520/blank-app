@@ -3,7 +3,7 @@ import os
 import difflib
 import streamlit as st
 
-DATA_FILE = "courses.json"
+DATA_FILE = "default_course_structure"
 EXTERNAL_COURSES_FILE = "my_courses.json"
 
 # ================== 課程結構 ==================
