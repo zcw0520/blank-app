@@ -53,23 +53,33 @@ course_structure = {
 }
 
 # ========== 固定 JSON 檔案路徑 ==========
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # 取得程式所在資料夾
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "ntu_my_courses.json")
-
+BACKUP_FILE = os.path.join(BASE_DIR, "ntu_my_courses_backup.json")
 # ========== 資料操作 ==========
+
 def init_data():
     if not os.path.exists(DATA_FILE):
-        save_data({"已修課程": {}})
+        # 如果 JSON 不存在才新建
+        data = {
+            "必修": [],
+            "共同必修": [],
+            "系必選修": [],
+            "自由選修": []
+        }
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
 
 def load_data():
-    if not os.path.exists(DATA_FILE):
-        init_data()
     with open(DATA_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+        json.dump(data, f, indent=4, ensure_ascii=False)
+    # 自動存一份備份
+    with open(BACKUP_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
 
 def find_course(name):
     for cat, courses in course_structure["課程"].items():
