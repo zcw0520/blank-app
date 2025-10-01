@@ -207,5 +207,3 @@ elif menu == "畢業檢查":
     results = graduation_check()
     for r in results:
         st.write(r)
-
-st.caption(f"📂 資料檔案儲存在：{DATA_FILE}")
