@@ -220,3 +220,7 @@ elif menu == "已修課程列表":
 
 # ---------- 畢業檢查 ----------
 elif menu == "畢業檢查":
+    st.subheader("✅ 畢業檢查結果")
+    for r in graduation_check():
+        st.write(r)
+
