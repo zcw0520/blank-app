@@ -1,18 +1,19 @@
 import json
 import os
-import difflib
 import streamlit as st
 
-# ========== 資料檔案 ==========
-DATA_FILE = "my_courses_data.json"
+# ================== 資料檔案 ==================
+DATA_FILE = "my_courses.json"
 
-# ========== 課程結構與學分規範 ==========
+# ================== 課程結構 ==================
 course_structure = {
     "校核心必修": {
         "中文閱讀與書寫(一)": 2,
         "中文閱讀與書寫(二)": 2,
-        "英文(一)": 3,
-        "英文(二)": 3
+        "英文(一)": 2,
+        "英文(二)": 2,
+        "體育(一)": 1,
+        "體育(二)": 1
     },
     "院核心必修": {
         "組織與社會": 2,
@@ -32,42 +33,36 @@ course_structure = {
     "系基礎選修": {
         "企業概論": 3,
         "社會學": 3,
-        "會計學": 3,
-        "應用統計學": 3,
-        "行政管理理論": 2,
-        "政治經濟學": 3
+        "會計學": 3
     },
     "系核心課程": {
         "組織管理學群": {
             "組織理論與管理": 3,
-            "公共管理": 2,
             "組織行為": 3
         },
         "公私決策學群": {
             "公共政策(一)": 2,
-            "公共政策(二)": 2,
-            "問題分析與決策": 2
+            "公共政策(二)": 2
         },
         "地區發展與行銷學群": {
             "行銷管理": 3,
-            "消費者行為": 3,
-            "都市與地方治理": 3
+            "消費者行為": 3
         }
     },
     "通識領域": {
-        "文史哲藝術": {
+        "文史哲藝術領域": {
             "美國文化": 2,
             "英文小品文賞析": 2
         },
-        "社會脈動": {
+        "社會脈動領域": {
             "法律素養": 2,
             "犯罪、法律與人權": 2
         },
-        "生命科學": {
+        "生命科學領域": {
             "ESG與永續生活設計": 2,
             "水資源利用與保育": 2
         },
-        "科技探索": {
+        "科技探索領域": {
             "AI人文藝術之應用": 2,
             "大數據分析概論": 2
         }
@@ -75,19 +70,7 @@ course_structure = {
     "自由選修": {}
 }
 
-graduation_req = {
-    "總學分": 132,
-    "校核心": 10,
-    "院核心": 4,
-    "系基礎必修": 27,
-    "系基礎選修": 23,
-    "系核心課程": 10,
-    "選修總學分": 18,
-    "自由選修": 20,
-    "通識領域數": 3
-}
-
-# ========== 資料存取 ==========
+# ================== 資料操作 ==================
 def init_data():
     if not os.path.exists(DATA_FILE):
         save_data({"已修課程": {}})
@@ -102,130 +85,99 @@ def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# ========== 工具函數 ==========
-def find_course(name):
+# ================== 工具 ==================
+def find_course(course_name):
     for cat, courses in course_structure.items():
-        if cat == "系核心課程":
-            for group, group_courses in courses.items():
-                if name in group_courses:
-                    return f"{cat}-{group}", name, group_courses[name]
-        elif cat == "通識領域":
+        if cat == "通識領域":
             for domain, domain_courses in courses.items():
-                if name in domain_courses:
-                    return f"{cat}-{domain}", name, domain_courses[name]
+                if course_name in domain_courses:
+                    return cat, course_name, domain_courses[course_name]
+        elif cat == "系核心課程":
+            for group, group_courses in courses.items():
+                if course_name in group_courses:
+                    return f"{cat} - {group}", course_name, group_courses[course_name]
         else:
-            if name in courses:
-                return cat, name, courses[name]
+            if course_name in courses:
+                return cat, course_name, courses[course_name]
     return None, None, None
 
-# ========== Streamlit UI ==========
+# ================== Streamlit App ==================
 st.set_page_config(page_title="畢業學分檢查系統", layout="wide")
 st.title("🎓 畢業學分檢查系統")
 
 data = load_data()
 
-tab1, tab2 = st.tabs(["➕ 新增課程", "📊 畢業檢查"])
+menu = st.sidebar.radio("功能選擇", ["新增課程", "刪除課程", "已修課程列表", "畢業檢查"])
 
-with tab1:
-    st.subheader("新增已修課程")
-    course_input = st.text_input("課程名稱")
-    credit_input = st.number_input("學分（可自行輸入，預設為課程結構學分）", min_value=1, step=1)
-    if st.button("加入"):
-        if course_input:
-            cat, cname, credit = find_course(course_input)
-if cname:
-    # 使用課程結構學分作為預設值
-    credit_input = st.number_input(
-        "學分（可自行輸入）", min_value=1, step=1, value=credit
-    )
-    if st.button("加入"):
-        data["已修課程"][cname] = credit_input
-        save_data(data)
-        st.success(f"✅ 已加入 {cname} ({credit_input}學分)")
+# ---------- 新增課程 ----------
+if menu == "新增課程":
+    st.subheader("➕ 新增課程")
 
-    st.subheader("📖 已修課程列表")
-    if data["已修課程"]:
-        for c, cr in data["已修課程"].items():
-            st.write(f"- {c} ({cr}學分)")
-        del_course = st.text_input("刪除課程名稱（單筆）")
-        if st.button("刪除課程"):
-            if del_course in data["已修課程"]:
-                data["已修課程"].pop(del_course)
-                save_data(data)
-                st.success(f"🗑 已刪除 {del_course}")
-            else:
-                st.warning("⚠️ 找不到課程")
-    else:
-        st.write("尚未加入課程")
-
-with tab2:
-    st.subheader("📊 畢業檢查報告")
-    taken = data["已修課程"]
-
-    # 計算各類學分
-    def sum_category(cat):
-        total = 0
-        if cat == "系核心課程":
-            for group, group_courses in course_structure["系核心課程"].items():
-                for c in group_courses:
-                    if c in taken:
-                        total += taken[c]
-        elif cat == "通識領域":
-            for domain, domain_courses in course_structure["通識領域"].items():
-                for c in domain_courses:
-                    if c in taken:
-                        total += taken[c]
-        else:
-            for c in course_structure.get(cat, {}):
-                if c in taken:
-                    total += taken[c]
-        return total
-
-    # 校核心
-    core_sch = sum_category("校核心必修")
-    st.metric("校核心已修學分", core_sch, delta=f"需求 {graduation_req['校核心']}")
-
-    # 院核心
-    core_col = sum_category("院核心必修")
-    st.metric("院核心已修學分", core_col, delta=f"需求 {graduation_req['院核心']}")
-
-    # 系基礎必修
-    dept_req = sum_category("系基礎必修")
-    st.metric("系基礎必修已修學分", dept_req, delta=f"需求 {graduation_req['系基礎必修']}")
-
-    # 系基礎選修
-    dept_elective = sum_category("系基礎選修")
-    st.metric("系基礎選修已修學分", dept_elective, delta=f"需求 {graduation_req['系基礎選修']}")
-
-    # 系核心三領域
-    st.write("### 系核心課程三領域")
-    for group in course_structure["系核心課程"]:
-        total = 0
-        for c in course_structure["系核心課程"][group]:
-            if c in taken:
-                total += taken[c]
-        st.metric(group, total, delta=f"需求 ≥ {graduation_req['系核心課程']}")
-
-    # 通識
-    st.write("### 通識領域")
-    for domain in course_structure["通識領域"]:
-        total = 0
-        for c in course_structure["通識領域"][domain]:
-            if c in taken:
-                total += taken[c]
-        st.metric(domain, total, delta="需求 ≥ 2")
-
-    # 自由選修
-    free = 0
-    all_known = []
+    # 建立所有課程清單（剔除已修課程）
+    all_courses = []
     for cat, courses in course_structure.items():
-        if cat not in ["校核心必修", "院核心必修", "系基礎必修", "系基礎選修", "系核心課程", "通識領域"]:
-            all_known += list(courses.keys())
-    for c in taken:
-        if c not in all_known:
-            free += taken[c]
-    st.metric("自由選修", free, delta=f"需求 ≥ {graduation_req['自由選修']}")
+        if cat == "通識領域":
+            for domain, domain_courses in courses.items():
+                all_courses.extend(domain_courses.keys())
+        elif cat == "系核心課程":
+            for group, group_courses in courses.items():
+                all_courses.extend(group_courses.keys())
+        else:
+            all_courses.extend(courses.keys())
+    remaining_courses = [c for c in all_courses if c not in data["已修課程"]]
 
-    # 總學分
-    total = sum(taken.values())
-    st.metric("已修總學分", total, delta=f"畢業需求 {graduation_req['總學分']}")
+    if remaining_courses:
+        course_name = st.selectbox("選擇課程", [""] + remaining_courses)
+        if course_name:
+            cat, cname, default_credit = find_course(course_name)
+            domain_input = None
+            if cat == "通識領域":
+                domain_input = st.selectbox("通識領域", [""] + list(course_structure["通識領域"].keys()))
+            credit_input = st.number_input(
+                "學分（可自行修改）", min_value=1, step=1, value=default_credit
+            )
+            if st.button("新增"):
+                data["已修課程"][cname] = {"學分": credit_input, "領域": domain_input if domain_input else None}
+                save_data(data)
+                st.success(f"✅ 已新增：{cname} ({credit_input}學分)，分類：{cat}")
+    else:
+        st.info("已經沒有可新增課程了！")
+
+# ---------- 刪除課程 ----------
+elif menu == "刪除課程":
+    st.subheader("🗑 刪除課程")
+    if data["已修課程"]:
+        name = st.selectbox("選擇要刪除的課程", [""] + list(data["已修課程"].keys()))
+        if st.button("刪除") and name:
+            del data["已修課程"][name]
+            save_data(data)
+            st.success(f"🗑 已刪除課程：{name}")
+    else:
+        st.info("目前沒有已修課程可以刪除！")
+
+# ---------- 已修課程列表 ----------
+elif menu == "已修課程列表":
+    st.subheader("📚 已修課程")
+    if data["已修課程"]:
+        for c, info in data["已修課程"].items():
+            st.write(f"- {c} ({info['學分']} 學分) 領域：{info.get('領域','無')}")
+    else:
+        st.info("尚未加入課程")
+
+# ---------- 畢業檢查 ----------
+elif menu == "畢業檢查":
+    st.subheader("📊 畢業檢查報告")
+    total_credits = sum(info["學分"] for info in data["已修課程"].values())
+    st.metric("已修總學分", total_credits)
+
+    # 系核心學群檢查
+    st.write("### 📚 系核心學群檢查")
+    for group, courses in course_structure["系核心課程"].items():
+        group_total = sum(info["學分"] for c, info in data["已修課程"].items() if c in courses)
+        st.metric(group, f"{group_total} 學分", delta="需求 ≥ 6 學分")
+
+    # 通識檢查
+    st.write("### 🌍 通識領域檢查")
+    for domain, domain_courses in course_structure["通識領域"].items():
+        domain_total = sum(info["學分"] for c, info in data["已修課程"].items() if c in domain_courses)
+        st.metric(domain, f"{domain_total} 學分", delta="需求 ≥ 2")
