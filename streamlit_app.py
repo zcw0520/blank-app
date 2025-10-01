@@ -204,4 +204,4 @@ elif menu == "畢業檢查":
     results = graduation_check()
     for r in results:
         st.write(r)
-我想要讓他在我重整或是離開網頁之後我之前輸入的資料不會跑掉，要怎麼用
+
