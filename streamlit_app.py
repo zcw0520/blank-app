@@ -22,52 +22,19 @@ course_structure = {
     "系基礎必修": {
         "政治學": 3,
         "行政學": 3,
-        "經濟學": 3,
-        "法學緒論": 3,
-        "中華民國憲法與政府": 3,
-        "管理學": 3,
-        "統計學": 3,
-        "社會科學研究法": 3,
-        "專題與實習": 3
-    },
-    "系基礎選修": {
-        "企業概論": 3,
-        "社會學": 3,
-        "會計學": 3
+        "經濟學": 3
     },
     "系核心課程": {
-        "組織管理學群": {
-            "組織理論與管理": 3,
-            "組織行為": 3
-        },
-        "公私決策學群": {
-            "公共政策(一)": 2,
-            "公共政策(二)": 2
-        },
-        "地區發展與行銷學群": {
-            "行銷管理": 3,
-            "消費者行為": 3
-        }
+        "組織管理學群": {"組織理論與管理": 3},
+        "公私決策學群": {"公共政策(一)": 2},
+        "地區發展與行銷學群": {"行銷管理": 3}
     },
     "通識領域": {
-        "文史哲藝術領域": {
-            "美國文化": 2,
-            "英文小品文賞析": 2
-        },
-        "社會脈動領域": {
-            "法律素養": 2,
-            "犯罪、法律與人權": 2
-        },
-        "生命科學領域": {
-            "ESG與永續生活設計": 2,
-            "水資源利用與保育": 2
-        },
-        "科技探索領域": {
-            "AI人文藝術之應用": 2,
-            "大數據分析概論": 2
-        }
-    },
-    "自由選修": {}
+        "文史哲藝術領域": {"美國文化": 2},
+        "社會脈動領域": {"法律素養": 2},
+        "生命科學領域": {"ESG與永續生活設計": 2},
+        "科技探索領域": {"AI人文藝術之應用": 2}
+    }
 }
 
 # ================== 資料操作 ==================
@@ -87,6 +54,7 @@ def save_data(data):
 
 # ================== 工具 ==================
 def find_course(course_name):
+    # 先找結構裡有的課程
     for cat, courses in course_structure.items():
         if cat == "通識領域":
             for domain, domain_courses in courses.items():
@@ -99,7 +67,8 @@ def find_course(course_name):
         else:
             if course_name in courses:
                 return cat, course_name, courses[course_name]
-    return None, None, None
+    # 找不到就當自由選修
+    return "自由選修", course_name, 0
 
 # ================== Streamlit App ==================
 st.set_page_config(page_title="畢業學分檢查系統", layout="wide")
@@ -116,22 +85,18 @@ if menu == "新增課程":
     course_input = st.text_input("輸入課程名稱")
     if course_input:
         cat, cname, default_credit = find_course(course_input)
-        if cname:
-            domain_input = None
-            if cat == "通識領域":
-                domain_input = st.selectbox("通識領域", [""] + list(course_structure["通識領域"].keys()))
-            
-            # 允許使用者修改學分
-            credit_input = st.number_input(
-                "學分（可自行修改）", min_value=1, step=1, value=default_credit
-            )
+        domain_input = None
+        if cat == "通識領域":
+            domain_input = st.selectbox("通識領域", [""] + list(course_structure["通識領域"].keys()))
+        
+        credit_input = st.number_input(
+            "學分（可自行修改）", min_value=1, step=1, value=default_credit
+        )
 
-            if st.button("新增課程"):
-                data["已修課程"][cname] = {"學分": credit_input, "領域": domain_input if domain_input else None}
-                save_data(data)
-                st.success(f"✅ 已新增：{cname} ({credit_input}學分)，分類：{cat}")
-        else:
-            st.warning("⚠️ 找不到課程，請確認名稱")
+        if st.button("新增課程"):
+            data["已修課程"][cname] = {"學分": credit_input, "領域": domain_input if domain_input else None, "分類": cat}
+            save_data(data)
+            st.success(f"✅ 已新增：{cname} ({credit_input}學分)，分類：{cat}")
 
 # ---------- 刪除課程 ----------
 elif menu == "刪除課程":
@@ -152,7 +117,7 @@ elif menu == "已修課程列表":
     st.subheader("📚 已修課程")
     if data["已修課程"]:
         for c, info in data["已修課程"].items():
-            st.write(f"- {c} ({info['學分']} 學分) 領域：{info.get('領域','無')}")
+            st.write(f"- {c} ({info['學分']} 學分) 分類：{info.get('分類','自由')}，領域：{info.get('領域','無')}")
     else:
         st.info("尚未加入課程")
 
@@ -173,3 +138,7 @@ elif menu == "畢業檢查":
     for domain, domain_courses in course_structure["通識領域"].items():
         domain_total = sum(info["學分"] for c, info in data["已修課程"].items() if c in domain_courses)
         st.metric(domain, f"{domain_total} 學分", delta="需求 ≥ 2")
+
+    # 自由選修學分
+    free_total = sum(info["學分"] for c, info in data["已修課程"].items() if info["分類"] == "自由選修")
+    st.metric("自由選修", free_total)
