@@ -111,47 +111,39 @@ menu = st.sidebar.radio("功能選擇", ["新增課程", "刪除課程", "已修
 
 # ---------- 新增課程 ----------
 if menu == "新增課程":
-    st.subheader("➕ 新增課程")
+    st.subheader("➕ 新增課程（文字輸入）")
 
-    # 建立所有課程清單（剔除已修課程）
-    all_courses = []
-    for cat, courses in course_structure.items():
-        if cat == "通識領域":
-            for domain, domain_courses in courses.items():
-                all_courses.extend(domain_courses.keys())
-        elif cat == "系核心課程":
-            for group, group_courses in courses.items():
-                all_courses.extend(group_courses.keys())
-        else:
-            all_courses.extend(courses.keys())
-    remaining_courses = [c for c in all_courses if c not in data["已修課程"]]
-
-    if remaining_courses:
-        course_name = st.selectbox("選擇課程", [""] + remaining_courses)
-        if course_name:
-            cat, cname, default_credit = find_course(course_name)
+    course_input = st.text_input("輸入課程名稱")
+    if course_input:
+        cat, cname, default_credit = find_course(course_input)
+        if cname:
             domain_input = None
             if cat == "通識領域":
                 domain_input = st.selectbox("通識領域", [""] + list(course_structure["通識領域"].keys()))
+            
+            # 允許使用者修改學分
             credit_input = st.number_input(
                 "學分（可自行修改）", min_value=1, step=1, value=default_credit
             )
-            if st.button("新增"):
+
+            if st.button("新增課程"):
                 data["已修課程"][cname] = {"學分": credit_input, "領域": domain_input if domain_input else None}
                 save_data(data)
                 st.success(f"✅ 已新增：{cname} ({credit_input}學分)，分類：{cat}")
-    else:
-        st.info("已經沒有可新增課程了！")
+        else:
+            st.warning("⚠️ 找不到課程，請確認名稱")
 
 # ---------- 刪除課程 ----------
 elif menu == "刪除課程":
     st.subheader("🗑 刪除課程")
     if data["已修課程"]:
-        name = st.selectbox("選擇要刪除的課程", [""] + list(data["已修課程"].keys()))
-        if st.button("刪除") and name:
+        name = st.text_input("輸入要刪除的課程名稱")
+        if st.button("刪除") and name in data["已修課程"]:
             del data["已修課程"][name]
             save_data(data)
             st.success(f"🗑 已刪除課程：{name}")
+        elif st.button("刪除") and name:
+            st.warning("⚠️ 找不到課程")
     else:
         st.info("目前沒有已修課程可以刪除！")
 
