@@ -132,6 +132,46 @@ def graduation_check():
     d = load_data()
     req = course_structure["總體要求"]
 
+elif menu == "畢業檢查":
+    st.subheader("✅ 畢業條件檢查")
+
+    # 載入資料
+    d = load_data()
+
+    # 計算各類學分
+    common_required = course_structure["課程"]["共同必修"]
+    required_courses = course_structure["課程"]["系訂必修"]
+    elective_courses = course_structure["課程"]["系內選修"]
+
+    taken_common = sum(d["已修課程"][c]["學分"] for c in common_required if c in d["已修課程"])
+    taken_required = sum(d["已修課程"][c]["學分"] for c in required_courses if c in d["已修課程"])
+    taken_elective = sum(d["已修課程"][c]["學分"] for c in elective_courses if c in d["已修課程"])
+    free_elective = sum(
+        info["學分"] for c, info in d["已修課程"].items()
+        if c not in elective_courses and c not in required_courses and c not in common_required
+    )
+    total_elective = taken_elective + free_elective
+
+    ge_total = sum(info["學分"] for c, info in d["已修課程"].items() if info.get("領域") and "(A" in info["領域"])
+    chinese_credit = sum(d["已修課程"][c]["學分"] for c in ["國文上","國文下"] if c in d["已修課程"])
+    deductible = min(chinese_credit, 3) if ge_total>0 else 0
+    actual_ge = max(ge_total - deductible,0)
+
+    total_credits = taken_common + taken_required + total_elective + actual_ge
+
+    # 顯示進度條
+    st.progress(total_credits / 128)
+
+    # 顯示學分表格
+    st.table({
+        "總學分": f"{total_credits} / 128",
+        "共同必修": f"{taken_common} / 9",
+        "系訂必修": f"{taken_required} / 56",
+        "選修": f"{total_elective} / 48",
+        "通識": f"{actual_ge} / 15"
+    })
+
+
     common_required = course_structure["課程"]["共同必修"]
     required_courses = course_structure["課程"]["系訂必修"]
     elective_courses = course_structure["課程"]["系內選修"]
