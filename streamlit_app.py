@@ -137,22 +137,24 @@ if menu == "新增課程":
     credit = st.number_input("學分（若課程結構已有，這裡可留 0）", min_value=0, max_value=10, value=0)
 
     ge_options = [
-        "",  # 空白選項
+        "", 
+        "系內選修",
+        "自由選修",
         "(A1)文學與藝術", 
         "(A2)歷史思維", 
         "(A3)世界文明", 
         "(A4)哲學與道德思考", 
         "(A5)公民意識與社會分析", 
-        "(A8)生命科學",
-        "系內選修"
+        "(A8)生命科學"
     ]
-    domain = st.selectbox("通識/選修領域", ge_options, index=0)
+    domain = st.selectbox("通識領域", ge_options, index=0)
     if domain == "":
-        domain = None
+        domain = None  # 空白選項不指定領域
 
     if st.button("新增"):
         msg = add_course(name, credit if credit>0 else None, domain)
         st.success(msg)
+
 
 elif menu == "刪除課程":
     d = load_data()
