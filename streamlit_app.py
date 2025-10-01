@@ -231,20 +231,18 @@ df = pd.DataFrame([{
     "涵蓋通識領域數": f"{ge_domains_count} / 3"
 }])
 st.table(df)
+
 # 生成未修課程表格
 missing_data = []
 
-# 共同必修
 missing_common = [c for c in common_required if c not in d["已修課程"]]
 for c in missing_common:
     missing_data.append({"類別": "共同必修", "課程名稱": c})
 
-# 系訂必修
 missing_required = [c for c in required_courses if c not in d["已修課程"]]
 for c in missing_required:
     missing_data.append({"類別": "系訂必修", "課程名稱": c})
 
-# 系內選修（如果你也想列出未修的系內選修課）
 missing_elective = [c for c in elective_courses if c not in d["已修課程"]]
 for c in missing_elective:
     missing_data.append({"類別": "系內選修", "課程名稱": c})
