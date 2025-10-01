@@ -1,6 +1,9 @@
 import json, os
 import streamlit as st
 
+# ========== 資料檔案 ==========
+DATA_FILE = "ntu_my_courses.json"
+
 # ========== 課程結構 ==========
 course_structure = {
     "總體要求": {
@@ -14,9 +17,7 @@ course_structure = {
     },
     "課程": {
         "共同必修": {
-            "國文上": 3, "英文一": 3, "英文二": 3, "進階英文一": 0, "進階英文二": 0,
-            "體育一": 0, "體育二": 0, "體育三": 0, "體育四": 0,
-            "服務學習甲": 0, "服務學習乙": 0
+            "國文上": 3, "國文下": 3, "英文一": 3, "英文二": 3
         },
         "系訂必修": {
             "微積分1": 2, "微積分2": 2, "微積分3": 2, "微積分4": 2,
@@ -52,20 +53,22 @@ course_structure = {
     }
 }
 
-# ========== 固定 JSON 檔案路徑 ==========
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # 取得程式所在資料夾
-DATA_FILE = os.path.join(BASE_DIR, "ntu_my_courses.json")
-
 # ========== 資料操作 ==========
 def init_data():
     if not os.path.exists(DATA_FILE):
-        save_data({"已修課程": {}})
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump({"已修課程": {}}, f, ensure_ascii=False, indent=4)
 
 def load_data():
     if not os.path.exists(DATA_FILE):
         init_data()
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        st.warning("⚠️ 資料檔案損壞，已重新建立！")
+        init_data()
+        return {"已修課程": {}}
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -113,27 +116,23 @@ def graduation_check():
     req = course_structure["總體要求"]
     results = []
 
-    # 課程分類
     common_required = course_structure["課程"]["共同必修"]
     required_courses = course_structure["課程"]["系訂必修"]
     elective_courses = course_structure["課程"]["系內選修"]
 
-    # 已修共同必修
     taken_common_courses = [c for c in common_required if c in d["已修課程"]]
     taken_common = sum(d["已修課程"][c]["學分"] for c in taken_common_courses)
     missing_common = [c for c in common_required if c not in d["已修課程"]]
-    results.append(f"共同必修：已修 {len(taken_common_courses)} / 9 學分")
+    results.append(f"共同必修：已修 {len(taken_common_courses)} / 9 門課，共 {taken_common} 學分")
     if missing_common:
         results.append("▶️ 還沒修的共同必修課程：" + "、".join(missing_common))
 
-    # 已修系訂必修
     taken_required = sum(info["學分"] for c, info in d["已修課程"].items() if c in required_courses)
     missing_required = [c for c in required_courses if c not in d["已修課程"]]
     results.append(f"系訂必修：已修 {taken_required} / {req['系訂必修學分']} 學分")
     if missing_required:
         results.append("▶️ 還沒修的系訂必修課程：" + "、".join(missing_required))
 
-    # 系內選修
     taken_elective = sum(info["學分"] for c, info in d["已修課程"].items() if c in elective_courses)
     free_elective = sum(info["學分"] for c, info in d["已修課程"].items()
                         if c not in elective_courses and c not in required_courses and c not in common_required and not (info.get("領域","").startswith("A")))
@@ -144,7 +143,6 @@ def graduation_check():
     if total_elective < req["總選修學分"]:
         results.append(f"⭐️ 還要修 {req['總選修學分'] - total_elective} 學分的選修！")
 
-    # 通識學分與國文抵扣
     ge_total = 0
     ge_domains = set()
     for c, info in d["已修課程"].items():
@@ -159,53 +157,67 @@ def graduation_check():
     if "國文下" in d["已修課程"]:
         chinese_credit += 3
 
-    deductible = 0
-    for dom in ["A1","A2","A3","A4"]:
-        for c, info in d["已修課程"].items():
-            if info.get("領域")==dom:
-                deductible = min(chinese_credit,3)
-                break
-
+    deductible = min(chinese_credit, 3) if ge_total > 0 else 0
     actual_ge = max(ge_total - deductible,0)
     results.append(f"通識：已修 {actual_ge} / {req['通識學分']} 學分，涵蓋領域數 {len(ge_domains)} / {req['通識至少領域數']}")
     if actual_ge < req["通識學分"]:
         results.append(f"⭐️ 通識還差 {req['通識學分'] - actual_ge} 學分")
 
-    # 總畢業學分（包含共同必修 + 通識 + 系訂必修 + 選修）
     total_credits = taken_common + actual_ge + taken_required + total_elective
     results.insert(0, f"總畢業學分：{total_credits} / {req['畢業總學分']}")
-
     return results
 
 # ========== Streamlit UI ==========
 st.title("🎓 學分檢查工具")
 
 menu = st.sidebar.radio("功能選擇", ["新增課程", "刪除課程", "已修課程列表", "畢業檢查"])
+d = load_data()
 
+# 建立所有課程清單
+all_courses = []
+for cat, courses in course_structure["課程"].items():
+    if cat == "通識課程":
+        for domain, domain_courses in courses.items():
+            for cname in domain_courses:
+                all_courses.append(cname)
+    else:
+        all_courses.extend(courses.keys())
+
+# ---------- 新增課程 ----------
 if menu == "新增課程":
-    name = st.text_input("課程名稱")
-    credit = st.number_input("學分（若課程結構已有，這裡可留 0）", min_value=0, max_value=10, value=0)
-    domain = st.text_input("通識領域（A1–A8，非通識可留空）")
-    if st.button("新增"):
-        msg = add_course(name, credit if credit>0 else None, domain if domain else None)
-        st.success(msg)
+    st.subheader("➕ 新增課程")
+    remaining_courses = [c for c in all_courses if c not in d["已修課程"]]
+    if remaining_courses:
+        name = st.selectbox("選擇課程", [""] + remaining_courses)
+        # 自動抓學分
+        _, _, default_credit = find_course(name) if name else (None, None, None)
+        domain_input = st.selectbox("通識領域（非通識選 None）", [""] + [f"A{i}" for i in range(1,9)])
+        if st.button("新增") and name:
+            msg = add_course(name, default_credit, domain_input if domain_input else None)
+            st.success(msg)
+    else:
+        st.info("已經沒有可新增課程了！")
 
+# ---------- 刪除課程 ----------
 elif menu == "刪除課程":
-    name = st.text_input("要刪除的課程名稱")
-    if st.button("刪除"):
-        msg = delete_course(name)
-        st.success(msg)
+    st.subheader("🗑 刪除課程")
+    if d["已修課程"]:
+        name = st.selectbox("選擇要刪除的課程", [""] + list(d["已修課程"].keys()))
+        if st.button("刪除") and name:
+            msg = delete_course(name)
+            st.success(msg)
+    else:
+        st.info("目前沒有已修課程可以刪除！")
 
+# ---------- 已修課程列表 ----------
 elif menu == "已修課程列表":
     st.subheader("📚 已修課程")
-    d = load_data()
-    for c, info in d["已修課程"].items():
-        st.write(f"- {c} ({info['學分']} 學分) 領域：{info.get('領域','無')}")
+    if d["已修課程"]:
+        for c, info in d["已修課程"].items():
+            st.write(f"- {c} ({info['學分']} 學分) 領域：{info.get('領域','無')}")
+    else:
+        st.info("目前沒有已修課程！")
 
+# ---------- 畢業檢查 ----------
 elif menu == "畢業檢查":
-    st.subheader("✅ 畢業條件檢查")
-    results = graduation_check()
-    for r in results:
-        st.write(r)
-
-st.caption(f"📂 資料檔案儲存在：{DATA_FILE}")
+   
