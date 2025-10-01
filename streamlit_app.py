@@ -137,7 +137,8 @@ if menu == "新增課程":
     credit = st.number_input("學分（若課程結構已有，這裡可留 0）", min_value=0, max_value=10, value=0)
 
     ge_options = [
-        "非通識",
+        "系內選修",
+        "自由選修",
         "(A1)文學與藝術", 
         "(A2)歷史思維", 
         "(A3)世界文明", 
@@ -145,13 +146,18 @@ if menu == "新增課程":
         "(A5)公民意識與社會分析", 
         "(A8)生命科學"
     ]
-    domain = st.selectbox("通識領域", ge_options, index=0)
-    if domain == "非通識":
-        domain = None
+    domain = st.selectbox("通識領域 / 選修類別", ge_options, index=0)
 
     if st.button("新增"):
-        msg = add_course(name, credit if credit>0 else None, domain)
+        # 如果選了系內選修或自由選修，就把 domain 記為對應文字
+        if domain in ["系內選修", "自由選修"]:
+            domain_value = domain
+        else:
+            domain_value = domain  # 通識領域保持原樣
+
+        msg = add_course(name, credit if credit>0 else None, domain_value)
         st.success(msg)
+
 
 elif menu == "刪除課程":
     name = st.text_input("要刪除的課程名稱")
