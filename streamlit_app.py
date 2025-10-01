@@ -232,6 +232,12 @@ df = pd.DataFrame([{
 }])
 st.table(df)
 
+# 在畢業檢查區塊
+d = load_data()
+common_required = course_structure["課程"]["共同必修"]
+required_courses = course_structure["課程"]["系訂必修"]
+elective_courses = course_structure["課程"]["系內選修"]
+
 # 生成未修課程表格
 missing_data = []
 
