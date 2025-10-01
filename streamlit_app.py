@@ -65,7 +65,16 @@ DATA_FILE = "ntu_my_courses.json"
 def init_data():
     if not os.path.exists(DATA_FILE):
         initial_data = {
-            "已修課程": {}
+            "已修課程": {"英文一": {"學分": 3, "領域": None},
+                "體育一": {"學分": 0, "領域": None},
+                "服務學習甲": {"學分": 0, "領域": None},
+                "微積分1": {"學分": 2, "領域": None},
+                "普通物理學甲上": {"學分": 3, "領域": None},
+                "普通物理學實驗上": {"學分": 1, "領域": None},
+                "普通化學一": {"學分": 3, "領域": None},
+                "化學實驗一": {"學分": 1, "領域": None},
+                "新生專題": {"學分": 2, "領域": None},
+                "普通心理學": {"學分": 3, "領域": "(A5)公民意識與社會分析"}
         }
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(initial_data, f, ensure_ascii=False, indent=4)
