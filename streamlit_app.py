@@ -1,4 +1,5 @@
-import json, os
+import json
+import os
 import streamlit as st
 
 # ========== 課程結構 ==========
@@ -14,9 +15,10 @@ course_structure = {
     },
     "課程": {
         "共同必修": {
-            "國文上": 3, "英文一": 3, "英文二": 3, "進階英文一": 0, "進階英文二": 0,
-            "體育一": 0, "體育二": 0, "體育三": 0, "體育四": 0,
-            "服務學習甲": 0, "服務學習乙": 0
+            "國文上": 3, "國文下": 3, "英文一": 3, "英文二": 3,
+            "進階英文一": 0, "進階英文二": 0,
+            "體育一": 2, "體育二": 2, "體育三": 2, "體育四": 2,
+            "服務學習甲": 2, "服務學習乙": 2
         },
         "系訂必修": {
             "微積分1": 2, "微積分2": 2, "微積分3": 2, "微積分4": 2,
@@ -52,14 +54,28 @@ course_structure = {
     }
 }
 
-# ========== 固定 JSON 檔案路徑 ==========
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # 取得程式所在資料夾
-DATA_FILE = os.path.join(BASE_DIR, "ntu_my_courses.json")
+DATA_FILE = "ntu_my_courses.json"
 
 # ========== 資料操作 ==========
 def init_data():
     if not os.path.exists(DATA_FILE):
-        save_data({"已修課程": {}})
+        # 預設資料，包含你這學期修的課
+        initial_data = {
+            "已修課程": {
+                "英文一": {"學分": 3, "領域": None},
+                "體育一": {"學分": 2, "領域": None},
+                "服務學習甲": {"學分": 2, "領域": None},
+                "微積分1": {"學分": 2, "領域": None},
+                "普通物理學甲上": {"學分": 3, "領域": None},
+                "普通物理學實驗上": {"學分": 1, "領域": None},
+                "普通化學一": {"學分": 3, "領域": None},
+                "化學實驗一": {"學分": 1, "領域": None},
+                "新生專題": {"學分": 2, "領域": None},
+                "普通心理學": {"學分": 3, "領域": None}
+            }
+        }
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(initial_data, f, ensure_ascii=False, indent=4)
 
 def load_data():
     if not os.path.exists(DATA_FILE):
@@ -122,7 +138,7 @@ def graduation_check():
     taken_common_courses = [c for c in common_required if c in d["已修課程"]]
     taken_common = sum(d["已修課程"][c]["學分"] for c in taken_common_courses)
     missing_common = [c for c in common_required if c not in d["已修課程"]]
-    results.append(f"共同必修：已修 {len(taken_common_courses)} / 9 學分")
+    results.append(f"共同必修：已修 {len(taken_common_courses)} / 9 門課，共 {taken_common} 學分")
     if missing_common:
         results.append("▶️ 還沒修的共同必修課程：" + "、".join(missing_common))
 
@@ -171,7 +187,7 @@ def graduation_check():
     if actual_ge < req["通識學分"]:
         results.append(f"⭐️ 通識還差 {req['通識學分'] - actual_ge} 學分")
 
-    # 總畢業學分（包含共同必修 + 通識 + 系訂必修 + 選修）
+    # 總畢業學分
     total_credits = taken_common + actual_ge + taken_required + total_elective
     results.insert(0, f"總畢業學分：{total_credits} / {req['畢業總學分']}")
 
