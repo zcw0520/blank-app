@@ -160,10 +160,25 @@ if menu == "新增課程":
 
 
 elif menu == "刪除課程":
+    st.subheader("📚 已輸入課程列表")
+    d = load_data()
+    if d["已修課程"]:
+        df_taken = pd.DataFrame([
+            {
+                "課程名稱": c,
+                "學分": info["學分"],
+                "領域": info.get("領域", "無")
+            } for c, info in d["已修課程"].items()
+        ])
+        st.table(df_taken)
+    else:
+        st.write("目前尚無已輸入課程。")
+
     name = st.text_input("要刪除的課程名稱")
     if st.button("刪除"):
         msg = delete_course(name)
         st.success(msg)
+
 
 elif menu == "已修課程列表":
     st.subheader("📚 已修課程")
