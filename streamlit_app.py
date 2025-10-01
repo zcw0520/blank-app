@@ -48,8 +48,14 @@ course_structure = {
             "有機合成": 3, "光學方法在生物研究之應用": 3
         },
         "通識課程": {
-            "A1": {}, "A2": {}, "A3": {}, "A4": {},
-            "A5": {}, "A6": {}, "A7": {}, "A8": {}
+            "文學與藝術(A1)": {}, 
+            "歷史思維(A2)": {}, 
+            "世界文明(A3)": {}, 
+            "哲學與道德思考(A4)": {}, 
+            "公民意識與社會分析(A5)": {}, 
+            "A6": {}, 
+            "A7": {}, 
+            "生命科學(A8)": {}
         }
     }
 }
@@ -59,7 +65,6 @@ DATA_FILE = "ntu_my_courses.json"
 # ========== 資料操作 ==========
 def init_data():
     if not os.path.exists(DATA_FILE):
-        # 預設資料，包含你這學期修的課
         initial_data = {
             "已修課程": {
                 "英文一": {"學分": 3, "領域": None},
@@ -71,7 +76,7 @@ def init_data():
                 "普通化學一": {"學分": 3, "領域": None},
                 "化學實驗一": {"學分": 1, "領域": None},
                 "新生專題": {"學分": 2, "領域": None},
-                "普通心理學": {"學分": 3, "領域":"A5"}
+                "普通心理學": {"學分": 3, "領域": "公民意識與社會分析(A5)"}
             }
         }
         with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -156,7 +161,7 @@ def graduation_check():
         if c not in elective_courses
         and c not in required_courses
         and c not in common_required
-        and not str(info.get("領域", "")).startswith("A")
+        and not (info.get("領域") and "(A" in str(info["領域"]))
     )
     total_elective = taken_elective + free_elective
     results.append(f"系內/自由選修：已修 {total_elective} / {req['總選修學分']} 學分")
@@ -170,7 +175,7 @@ def graduation_check():
     ge_domains = set()
     for c, info in d["已修課程"].items():
         domain = str(info.get("領域", ""))
-        if domain.startswith("A"):
+        if "(A" in domain:
             ge_total += info["學分"]
             ge_domains.add(domain)
 
@@ -200,9 +205,22 @@ menu = st.sidebar.radio("功能選擇", ["新增課程", "刪除課程", "已修
 if menu == "新增課程":
     name = st.text_input("課程名稱")
     credit = st.number_input("學分（若課程結構已有，這裡可留 0）", min_value=0, max_value=10, value=0)
-    domain = st.text_input("通識領域（A1–A8，非通識可留空）")
+
+    ge_options = [
+        "非通識",
+        "(A1)文學與藝術": {}, 
+        "(A2)歷史思維": {}, 
+        "(A3)世界文明": {}, 
+        "(A4)哲學與道德思考": {}, 
+        "(A5)公民意識與社會分析": {},  
+        "(A8)生命科學": {}
+    ]
+    domain = st.selectbox("通識領域", ge_options, index=0)
+    if domain == "非通識":
+        domain = None
+
     if st.button("新增"):
-        msg = add_course(name, credit if credit>0 else None, domain if domain else None)
+        msg = add_course(name, credit if credit>0 else None, domain)
         st.success(msg)
 
 elif menu == "刪除課程":
