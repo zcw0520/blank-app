@@ -65,18 +65,7 @@ DATA_FILE = "ntu_my_courses.json"
 def init_data():
     if not os.path.exists(DATA_FILE):
         initial_data = {
-            "已修課程": {
-                "英文一": {"學分": 3, "領域": None},
-                "體育一": {"學分": 0, "領域": None},
-                "服務學習甲": {"學分": 0, "領域": None},
-                "微積分1": {"學分": 2, "領域": None},
-                "普通物理學甲上": {"學分": 3, "領域": None},
-                "普通物理學實驗上": {"學分": 1, "領域": None},
-                "普通化學一": {"學分": 3, "領域": None},
-                "化學實驗一": {"學分": 1, "領域": None},
-                "新生專題": {"學分": 2, "領域": None},
-                "普通心理學": {"學分": 3, "領域": "(A5)公民意識與社會分析"}
-            }
+            "已修課程": {}
         }
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(initial_data, f, ensure_ascii=False, indent=4)
@@ -108,15 +97,15 @@ def add_course(name, credit=None, domain=None):
         return f"⚠️ 已登錄過：{name}"
     cat, cname, ccredit = find_course(name)
     if cname:
-        data["已修課程"][cname] = {"學分": ccredit, "領域": None}
-        save_data(data)
-        return f"✅ 已新增：{cname}（{ccredit} 學分），分類：{cat}"
+        # 如果是系內選修或通識課就直接使用課程結構的學分
+        data["已修課程"][cname] = {"學分": ccredit, "領域": None if domain is None else domain}
     else:
         if credit is None:
             return f"⚠️ {name} 需要輸入學分！"
-        data["已修課程"][name] = {"學分": credit, "領域": domain if domain else None}
-        save_data(data)
-        return f"✅ 已新增：{name}（{credit} 學分），領域：{domain if domain else '無'}"
+        # 空白領域視為自由選修
+        data["已修課程"][name] = {"學分": credit, "領域": domain if domain else "自由選修"}
+    save_data(data)
+    return f"✅ 已新增：{name}（{data['已修課程'][name]['學分']} 學分），領域：{data['已修課程'][name]['領域']}"
 
 def delete_course(name):
     data = load_data()
@@ -132,59 +121,53 @@ st.title("🎓 學分檢查工具")
 
 menu = st.sidebar.radio("功能選擇", ["新增課程", "刪除課程", "已修課程列表", "畢業檢查"])
 
-ge_options = [
-    "",  # 空白選項
-    "(A1)文學與藝術", 
-    "(A2)歷史思維", 
-    "(A3)世界文明", 
-    "(A4)哲學與道德思考", 
-    "(A5)公民意識與社會分析", 
-    "(A8)生命科學",
-    "系內選修",
-    "自由選修"
-]
-domain = st.selectbox("通識領域", ge_options, index=0)  # 預設為空白
-if domain == "":
-    domain = None
-elif domain == "自由選修":
-    domain = None  # 自由選修也用 None
+if menu == "新增課程":
+    name = st.text_input("課程名稱")
+    credit = st.number_input("學分（若課程結構已有，這裡可留 0）", min_value=0, max_value=10, value=0)
 
+    ge_options = [
+        "",  # 空白選項
+        "(A1)文學與藝術", 
+        "(A2)歷史思維", 
+        "(A3)世界文明", 
+        "(A4)哲學與道德思考", 
+        "(A5)公民意識與社會分析", 
+        "(A8)生命科學",
+        "系內選修"
+    ]
+    domain = st.selectbox("通識/選修領域", ge_options, index=0)
+    if domain == "":
+        domain = None
 
+    if st.button("新增"):
+        msg = add_course(name, credit if credit>0 else None, domain)
+        st.success(msg)
 
 elif menu == "刪除課程":
-    st.subheader("📚 已輸入課程列表")
     d = load_data()
     if d["已修課程"]:
+        st.subheader("📚 已輸入課程")
         df_taken = pd.DataFrame([
-            {
-                "課程名稱": c,
-                "學分": info["學分"],
-                "領域": info.get("領域", "無")
-            } for c, info in d["已修課程"].items()
+            {"課程名稱": c, "學分": info["學分"], "領域": info.get("領域", "自由選修")}
+            for c, info in d["已修課程"].items()
         ])
         st.table(df_taken)
-    else:
-        st.write("目前尚無已輸入課程。")
-
     name = st.text_input("要刪除的課程名稱")
     if st.button("刪除"):
         msg = delete_course(name)
         st.success(msg)
 
-
 elif menu == "已修課程列表":
     st.subheader("📚 已修課程")
     d = load_data()
-    # 將已修課程轉成 DataFrame
-    df_taken = pd.DataFrame([
-        {
-            "課程名稱": c,
-            "學分": info["學分"],
-            "領域": info.get("領域", "無")
-        } for c, info in d["已修課程"].items()
-    ])
-    st.table(df_taken)
-
+    if d["已修課程"]:
+        df_taken = pd.DataFrame([
+            {"課程名稱": c, "學分": info["學分"], "領域": info.get("領域", "自由選修")}
+            for c, info in d["已修課程"].items()
+        ])
+        st.table(df_taken)
+    else:
+        st.write("目前沒有已修課程。")
 
 elif menu == "畢業檢查":
     st.subheader("✅ 畢業條件檢查")
@@ -194,60 +177,38 @@ elif menu == "畢業檢查":
     required_courses = course_structure["課程"]["系訂必修"]
     elective_courses = course_structure["課程"]["系內選修"]
 
-    # ================== 學分計算 ==================
-    # 共同必修
+    # 計算學分
     taken_common = sum(d["已修課程"][c]["學分"] for c in common_required if c in d["已修課程"])
-    
-    # 系訂必修
     taken_required = sum(d["已修課程"][c]["學分"] for c in required_courses if c in d["已修課程"])
-    
-    # 系內選修（兩種來源：資料檔定義的課 + 使用者手動選「系內選修」）
-    taken_major_elective = sum(
-        d["已修課程"][c]["學分"] for c in elective_courses if c in d["已修課程"]
-    )
-    taken_major_elective += sum(
-        info["學分"] for c, info in d["已修課程"].items()
-        if info.get("領域") == "系內選修"
-    )
-
-    # 自由選修（排除掉已知類別）
+    taken_elective = sum(d["已修課程"][c]["學分"] for c in elective_courses if c in d["已修課程"])
     free_elective = sum(
         info["學分"] for c, info in d["已修課程"].items()
-        if (
-            c not in elective_courses
-            and c not in required_courses
-            and c not in common_required
-            and not str(info.get("領域", "")).startswith("(A")  # 通識
-            and info.get("領域") != "系內選修"
-        )
+        if c not in elective_courses and c not in required_courses and c not in common_required and info.get("領域")=="自由選修"
     )
+    total_elective = taken_elective + free_elective
 
-    total_elective = taken_major_elective + free_elective
-
-    # 通識（扣抵國文 3 學分）
-    ge_total = sum(info["學分"] for c, info in d["已修課程"].items() if str(info.get("領域", "")).startswith("(A"))
+    ge_total = sum(info["學分"] for c, info in d["已修課程"].items() if info.get("領域") and "(A" in info["領域"])
     chinese_credit = sum(d["已修課程"][c]["學分"] for c in ["國文上","國文下"] if c in d["已修課程"])
-    deductible = min(chinese_credit, 3) if ge_total > 0 else 0
-    actual_ge = max(ge_total - deductible, 0)
+    deductible = min(chinese_credit, 3) if ge_total>0 else 0
+    actual_ge = max(ge_total - deductible,0)
 
-    # 總學分
     total_credits = taken_common + taken_required + total_elective + actual_ge
 
-    # ================== 顯示進度 ==================
+    # 顯示進度條
     st.progress(total_credits / req["畢業總學分"])
 
-    # 學分總表
+    # 顯示學分表格
     df = pd.DataFrame([{
         "總學分": f"{total_credits} / {req['畢業總學分']}",
         "共同必修": f"{taken_common} / {req['共同必修學分']}",
         "系訂必修": f"{taken_required} / {req['系訂必修學分']}",
-        "系內選修": f"{taken_major_elective} / {req['系內選修最低學分']}",
-        "自由選修": f"{free_elective} / {req['總選修學分'] - req['系內選修最低學分']}",
+        "系內選修": f"{taken_elective} / {req['系內選修最低學分']}",
+        "自由選修": f"{free_elective} / {req['總選修學分']-req['系內選修最低學分']}",
         "通識": f"{actual_ge} / {req['通識學分']}"
     }])
     st.table(df)
 
-    # ================== 未修課程清單 ==================
+    # 顯示未修課表格
     missing_common = [c for c in common_required if c not in d["已修課程"]]
     missing_required = [c for c in required_courses if c not in d["已修課程"]]
 
