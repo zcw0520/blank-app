@@ -221,13 +221,13 @@ elif menu == "畢業檢查":
     progress = min(total_credits / course_structure["總體要求"]["畢業總學分"], 1.0)
     st.progress(progress)
 
-    # 顯示表格（整數）
-    df = pd.DataFrame([{
-        "總學分": total_credits / 128,
-        "共同必修": taken_common / 9 ,
-        "系訂必修": taken_required / 56,
-        "選修": total_elective / 48, 
-        "通識": actual_ge / 15,
-        "涵蓋通識領域數": ge_domains_count / 3
-    }])
-    st.table(df)
+   # 顯示表格（幾分之幾）
+df = pd.DataFrame([{
+    "總學分": f"{total_credits} / 128",
+    "共同必修": f"{taken_common} / 9",
+    "系訂必修": f"{taken_required} / 56",
+    "選修": f"{total_elective} / 48",
+    "通識": f"{actual_ge} / 15",
+    "涵蓋通識領域數": f"{ge_domains_count} / 3"
+}])
+st.table(df)
