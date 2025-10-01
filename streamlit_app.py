@@ -185,28 +185,35 @@ elif menu == "畢業檢查":
     taken_common = sum(d["已修課程"][c]["學分"] for c in common_required if c in d["已修課程"])
     taken_required = sum(d["已修課程"][c]["學分"] for c in required_courses if c in d["已修課程"])
     taken_elective = sum(d["已修課程"][c]["學分"] for c in elective_courses if c in d["已修課程"])
+
     free_elective = sum(
         info["學分"] for c, info in d["已修課程"].items()
-        if c not in elective_courses and c not in required_courses and c not in common_required and not (info.get("領域") and "(A" in str(info["領域"]))
+        if c not in elective_courses and c not in required_courses and c not in common_required
+        and not (info.get("領域") and "(A" in str(info["領域"]))
     )
+
+    ge_total = sum(
+        info["學分"] for c, info in d["已修課程"].items()
+        if info.get("領域") and "(A" in info["領域"]
+    )
+
+    chinese_credit = sum(d["已修課程"][c]["學分"] for c in ["國文上", "國文下"] if c in d["已修課程"])
+    deductible = min(chinese_credit, 3) if ge_total > 0 else 0
+    actual_ge = max(ge_total - deductible, 0)
+
     total_elective = taken_elective + free_elective
-
-    ge_total = sum(info["學分"] for c, info in d["已修課程"].items() if info.get("領域") and "(A" in info["領域"])
-    chinese_credit = sum(d["已修課程"][c]["學分"] for c in ["國文上","國文下"] if c in d["已修課程"])
-    deductible = min(chinese_credit, 3) if ge_total>0 else 0
-    actual_ge = max(ge_total - deductible,0)
-
     total_credits = taken_common + taken_required + total_elective + actual_ge
 
-    # 顯示進度條
+    # 進度條
     st.progress(total_credits / req["畢業總學分"])
 
-    # 顯示學分表格
+    # 顯示學分表格（加上系內選修 ≥16 與自由選修）
     df = pd.DataFrame([{
         "總學分": f"{total_credits} / {req['畢業總學分']}",
         "共同必修": f"{taken_common} / {req['共同必修學分']}",
         "系訂必修": f"{taken_required} / {req['系訂必修學分']}",
-        "選修": f"{total_elective} / {req['總選修學分']}",
+        "系內選修 (≥16)": f"{taken_elective} / {req['系內選修最低學分']}",
+        "自由選修": f"{free_elective} / {req['總選修學分'] - req['系內選修最低學分']}",
         "通識": f"{actual_ge} / {req['通識學分']}"
     }])
     st.table(df)
