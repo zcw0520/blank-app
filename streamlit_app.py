@@ -2,7 +2,6 @@ import json
 import os
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
 # ========== 課程結構 ==========
 course_structure = {
@@ -50,11 +49,11 @@ course_structure = {
             "有機合成": 3, "光學方法在生物研究之應用": 3
         },
         "通識課程": {
-            "(A1)文學與藝術": {},
-            "(A2)歷史思維": {},
-            "(A3)世界文明": {},
-            "(A4)哲學與道德思考": {},
-            "(A5)公民意識與社會分析": {},
+            "(A1)文學與藝術": {}, 
+            "(A2)歷史思維": {}, 
+            "(A3)世界文明": {}, 
+            "(A4)哲學與道德思考": {}, 
+            "(A5)公民意識與社會分析": {}, 
             "(A8)生命科學": {}
         }
     }
@@ -65,7 +64,9 @@ DATA_FILE = "ntu_my_courses.json"
 # ========== 資料操作 ==========
 def init_data():
     if not os.path.exists(DATA_FILE):
-        initial_data = {"已修課程": {      "英文一": {"學分": 3, "領域": None},
+        initial_data = {
+            "已修課程": {
+                "英文一": {"學分": 3, "領域": None},
                 "體育一": {"學分": 0, "領域": None},
                 "服務學習甲": {"學分": 0, "領域": None},
                 "微積分1": {"學分": 2, "領域": None},
@@ -75,7 +76,7 @@ def init_data():
                 "化學實驗一": {"學分": 1, "領域": None},
                 "新生專題": {"學分": 2, "領域": None},
                 "普通心理學": {"學分": 3, "領域": "公民意識與社會分析(A5)"}
-                 }
+            }
         }
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(initial_data, f, ensure_ascii=False, indent=4)
@@ -130,7 +131,6 @@ def delete_course(name):
 def graduation_check():
     d = load_data()
     req = course_structure["總體要求"]
-    results = []
 
     common_required = course_structure["課程"]["共同必修"]
     required_courses = course_structure["課程"]["系訂必修"]
@@ -139,19 +139,11 @@ def graduation_check():
     # 共同必修
     taken_common_courses = [c for c in common_required if c in d["已修課程"]]
     taken_common = sum(d["已修課程"][c]["學分"] for c in taken_common_courses)
-    missing_common = [c for c in common_required if c not in d["已修課程"]]
-    results.append(f"共同必修：已修 {len(taken_common_courses)} / {len(common_required)} 門課， {taken_common} / {req['共同必修學分']} 學分")
-    if missing_common:
-        results.append("▶️ 還沒修的共同必修課程：" + "、".join(missing_common))
 
     # 系訂必修
     taken_required = sum(info["學分"] for c, info in d["已修課程"].items() if c in required_courses)
-    missing_required = [c for c in required_courses if c not in d["已修課程"]]
-    results.append(f"系訂必修：已修 {taken_required} / {req['系訂必修學分']} 學分")
-    if missing_required:
-        results.append("▶️ 還沒修的系訂必修課程：" + "、".join(missing_required))
 
-    # 選修（含自由選修）
+    # 選修
     taken_elective = sum(info["學分"] for c, info in d["已修課程"].items() if c in elective_courses)
     free_elective = sum(
         info["學分"]
@@ -162,11 +154,6 @@ def graduation_check():
         and not (info.get("領域") and "(A" in str(info["領域"]))
     )
     total_elective = taken_elective + free_elective
-    results.append(f"系內/自由選修：已修 {total_elective} / {req['總選修學分']} 學分")
-    if taken_elective < req["系內選修最低學分"]:
-        results.append(f"⭐️ 還要修 {req['系內選修最低學分'] - taken_elective} 學分的系內選修！")
-    if total_elective < req["總選修學分"]:
-        results.append(f"⭐️ 還要修 {req['總選修學分'] - total_elective} 學分的選修！")
 
     # 通識
     ge_total = 0
@@ -176,55 +163,42 @@ def graduation_check():
         if "(A" in domain:
             ge_total += info["學分"]
             ge_domains.add(domain)
-
     chinese_credit = 0
     if "國文上" in d["已修課程"]:
         chinese_credit += 3
     if "國文下" in d["已修課程"]:
         chinese_credit += 3
-
     deductible = min(chinese_credit, 3) if ge_total > 0 else 0
     actual_ge = max(ge_total - deductible, 0)
-    results.append(f"通識：已修 {actual_ge} / {req['通識學分']} 學分，涵蓋領域數 {len(ge_domains)} / {req['通識至少領域數']}")
-    if actual_ge < req["通識學分"]:
-        results.append(f"⭐️ 通識還差 {req['通識學分'] - actual_ge} 學分")
 
     # 總學分
     total_credits = taken_common + actual_ge + taken_required + total_elective
-    results.insert(0, f"總畢業學分：{total_credits} / {req['畢業總學分']}")
-    return results, {
-        "共同必修": taken_common,
-        "系訂必修": taken_required,
-        "系內選修": taken_elective,
-        "自由選修": free_elective,
-        "通識": actual_ge,
-        "總學分": total_credits
-    }
+
+    # 回傳整數數據
+    return int(total_credits), int(taken_common), int(taken_required), int(total_elective), int(actual_ge), len(ge_domains)
 
 # ========== Streamlit UI ==========
-st.title("🎓  學分檢查工具")
+st.title("🎓 學分檢查工具")
 
 menu = st.sidebar.radio("功能選擇", ["新增課程", "刪除課程", "已修課程列表", "畢業檢查"])
 
 if menu == "新增課程":
     name = st.text_input("課程名稱")
     credit = st.number_input("學分（若課程結構已有，這裡可留 0）", min_value=0, max_value=10, value=0)
-
     ge_options = [
         "非通識",
-        "(A1)文學與藝術",
-        "(A2)歷史思維",
-        "(A3)世界文明",
-        "(A4)哲學與道德思考",
-        "(A5)公民意識與社會分析",
+        "(A1)文學與藝術", 
+        "(A2)歷史思維", 
+        "(A3)世界文明", 
+        "(A4)哲學與道德思考", 
+        "(A5)公民意識與社會分析", 
         "(A8)生命科學"
     ]
     domain = st.selectbox("通識領域", ge_options, index=0)
     if domain == "非通識":
         domain = None
-
     if st.button("新增"):
-        msg = add_course(name, credit if credit > 0 else None, domain)
+        msg = add_course(name, credit if credit>0 else None, domain)
         st.success(msg)
 
 elif menu == "刪除課程":
@@ -236,19 +210,24 @@ elif menu == "刪除課程":
 elif menu == "已修課程列表":
     st.subheader("📚 已修課程")
     d = load_data()
-    if d["已修課程"]:
-        df = pd.DataFrame([totals]).astype(int)  # 把學分轉成整數
-        st.table(df)
-    else:
-        st.info("尚未新增任何課程")
+    for c, info in d["已修課程"].items():
+        st.write(f"- {c} ({info['學分']} 學分) 領域：{info.get('領域','無')}")
 
 elif menu == "畢業檢查":
     st.subheader("✅ 畢業條件檢查")
-    results, stats = graduation_check()
-    for r in results:
-        st.write(r)
+    total_credits, taken_common, taken_required, total_elective, actual_ge, ge_domains_count = graduation_check()
 
-    # 視覺化圖表
-  st.subheader("🎯 總學分進度")
-  st.progress(min(totals["總學分"] / GRAD_TOTAL, 1.0))
-  st.write(f"{totals['總學分']}/{GRAD_TOTAL} 學分")
+    # 顯示進度條
+    progress = min(total_credits / course_structure["總體要求"]["畢業總學分"], 1.0)
+    st.progress(progress)
+
+    # 顯示表格（整數）
+    df = pd.DataFrame([{
+        "總學分": total_credits,
+        "共同必修": taken_common,
+        "系訂必修": taken_required,
+        "選修": total_elective,
+        "通識": actual_ge,
+        "涵蓋通識領域數": ge_domains_count
+    }])
+    st.table(df)
