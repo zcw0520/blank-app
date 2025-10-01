@@ -137,7 +137,7 @@ def graduation_check():
     taken_common_courses = [c for c in common_required if c in d["已修課程"]]
     taken_common = sum(d["已修課程"][c]["學分"] for c in taken_common_courses)
     missing_common = [c for c in common_required if c not in d["已修課程"]]
-    results.append(f"共同必修：已修 {len(taken_common_courses)} / {len(common_required)} 門課，共 {taken_common} 學分")
+    results.append(f"共同必修：已修 {len(taken_common_courses)} / {len(common_required)} 門課， {taken_common} / 9學分")
     if missing_common:
         results.append("▶️ 還沒修的共同必修課程：" + "、".join(missing_common))
 
@@ -145,7 +145,7 @@ def graduation_check():
     taken_required = sum(info["學分"] for c, info in d["已修課程"].items() if c in required_courses)
     missing_required = [c for c in required_courses if c not in d["已修課程"]]
     results.append(f"系訂必修：已修 {taken_required} / {req['系訂必修學分']} 學分")
-    if missing_required:
+    if missing_required: 
         results.append("▶️ 還沒修的系訂必修課程：" + "、".join(missing_required))
 
     # 選修
