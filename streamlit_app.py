@@ -237,7 +237,7 @@ elif menu == "已修課程列表":
     st.subheader("📚 已修課程")
     d = load_data()
     if d["已修課程"]:
-        df = pd.DataFrame(d["已修課程"]).T
+        df = pd.DataFrame([totals]).astype(int)  # 把學分轉成整數
         st.table(df)
     else:
         st.info("尚未新增任何課程")
@@ -249,10 +249,6 @@ elif menu == "畢業檢查":
         st.write(r)
 
     # 視覺化圖表
-    st.subheader("📊 學分分布")
-    fig = px.pie(
-        values=[stats["共同必修"], stats["系訂必修"], stats["系內選修"], stats["自由選修"], stats["通識"]],
-        names=["共同必修", "系訂必修", "系內選修", "自由選修", "通識"],
-        hole=0.4
-    )
-    st.plotly_chart(fig)
+  st.subheader("🎯 總學分進度")
+  st.progress(min(totals["總學分"] / GRAD_TOTAL, 1.0))
+  st.write(f"{totals['總學分']}/{GRAD_TOTAL} 學分")
