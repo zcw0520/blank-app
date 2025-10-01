@@ -133,14 +133,15 @@ with tab1:
     if st.button("加入"):
         if course_input:
             cat, cname, credit = find_course(course_input)
-            if cname:
-                data["已修課程"][cname] = credit_input if credit_input else credit
-                save_data(data)
-                st.success(f"✅ 已加入 {cname} ({data['已修課程'][cname]}學分)")
-            else:
-                data["已修課程"][course_input] = credit_input
-                save_data(data)
-                st.success(f"✅ 已加入自訂課程 {course_input} ({credit_input}學分)")
+if cname:
+    # 使用課程結構學分作為預設值
+    credit_input = st.number_input(
+        "學分（可自行輸入）", min_value=1, step=1, value=credit
+    )
+    if st.button("加入"):
+        data["已修課程"][cname] = credit_input
+        save_data(data)
+        st.success(f"✅ 已加入 {cname} ({credit_input}學分)")
 
     st.subheader("📖 已修課程列表")
     if data["已修課程"]:
