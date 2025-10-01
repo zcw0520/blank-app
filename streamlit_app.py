@@ -223,11 +223,11 @@ elif menu == "畢業檢查":
 
     # 顯示表格（整數）
     df = pd.DataFrame([{
-        "總學分": total_credits,
-        "共同必修": taken_common,
-        "系訂必修": taken_required,
-        "選修": total_elective,
-        "通識": actual_ge,
-        "涵蓋通識領域數": ge_domains_count
+        "總學分": total_credits / 128,
+        "共同必修": taken_common / 9 ,
+        "系訂必修": taken_required / 56,
+        "選修": total_elective / 48, 
+        "通識": actual_ge / 15,
+        "涵蓋通識領域數": ge_domains_count / 3
     }])
     st.table(df)
