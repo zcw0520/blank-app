@@ -78,6 +78,7 @@ data = load_data()
 
 menu = st.sidebar.radio("功能選擇", ["新增課程", "刪除課程", "已修課程列表", "畢業檢查"])
 
+
 # ---------- 新增課程 ----------
 if menu == "新增課程":
     st.subheader("➕ 新增課程（文字輸入）")
@@ -89,12 +90,17 @@ if menu == "新增課程":
         if cat == "通識領域":
             domain_input = st.selectbox("通識領域", [""] + list(course_structure["通識領域"].keys()))
         
+        # 保證學分至少 1，避免 StreamlitValueBelowMinError
         credit_input = st.number_input(
-            "學分（可自行修改）", min_value=1, step=1, value=default_credit
+            "學分（可自行修改）", min_value=1, step=1, value=max(default_credit, 1)
         )
 
         if st.button("新增課程"):
-            data["已修課程"][cname] = {"學分": credit_input, "領域": domain_input if domain_input else None, "分類": cat}
+            data["已修課程"][cname] = {
+                "學分": credit_input,
+                "領域": domain_input if domain_input else None,
+                "分類": cat
+            }
             save_data(data)
             st.success(f"✅ 已新增：{cname} ({credit_input}學分)，分類：{cat}")
 
