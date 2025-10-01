@@ -162,8 +162,16 @@ elif menu == "刪除課程":
 elif menu == "已修課程列表":
     st.subheader("📚 已修課程")
     d = load_data()
-    for c, info in d["已修課程"].items():
-        st.write(f"- {c} ({info['學分']} 學分) 領域：{info.get('領域','無')}")
+    # 將已修課程轉成 DataFrame
+    df_taken = pd.DataFrame([
+        {
+            "課程名稱": c,
+            "學分": info["學分"],
+            "領域": info.get("領域", "無")
+        } for c, info in d["已修課程"].items()
+    ])
+    st.table(df_taken)
+
 
 elif menu == "畢業檢查":
     st.subheader("✅ 畢業條件檢查")
