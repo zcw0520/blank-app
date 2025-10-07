@@ -139,7 +139,7 @@ elif menu == "畢業檢查":
         st.write(f"校核心必修：{school_core} / 10")
 
         # 院核心
-       院_core = credits_in_category("院核心必修")
+        院_core = credits_in_category("院核心必修")
         st.write(f"院核心必修：{院_core} / 4")
 
         # 系基礎
