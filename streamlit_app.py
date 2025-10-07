@@ -1,170 +1,180 @@
+import streamlit as st
 import json
 import os
-import streamlit as st
 
-# ================== 資料檔案 ==================
 DATA_FILE = "my_courses.json"
 
-# ================== 課程結構 ==================
-course_structure = {
-    "校核心必修": {
-        "中文閱讀與書寫(一)": 2,
-        "中文閱讀與書寫(二)": 2,
-        "英文(一)": 2,
-        "英文(二)": 2,
-        "體育(一)": 1,
-        "體育(二)": 1
+# ===== 課程架構（取自你的行政管理系版本） =====
+default_course_structure = {
+    "文史哲藝術領域": {
+        "美國文化": 2,
+        "英文小品文賞析": 2,
+        "英語口語表達技巧": 2,
+        "旅遊英文": 2,
+        "時事英文": 2,
+        "英文口語表達技巧": 2,
+        "職場英文": 2,
+        "小說與社會關懷": 2,
+        "文學與現代生活": 2,
+        "臺灣經典文獻選讀": 2,
+        "經典文學導讀": 2,
+        "臺灣歷史與文化": 2,
+        "影像藝術思維": 2,
+        "攝影藝術": 2,
+        "空間美學": 2,
+        "音樂與人生": 2,
+        "表演藝術欣賞": 2
     },
-    "院核心必修": {
-        "組織與社會": 2,
-        "運算思維與程式設計": 2
+    "社會脈動領域": {
+        "法律素養": 2,
+        "犯罪、法律與人權": 2,
+        "亞太地區地緣政治與中國": 2,
+        "政治學概要": 2,
+        "國際關係發展與理論": 2,
+        "臺灣主權地位的國際觀": 2,
+        "職場與法律": 2,
+        "服務學習與社會關懷": 2,
+        "理財規劃": 2,
+        "管理學概論": 2,
+        "領導藝術": 2
     },
-    "系基礎必修": {
-        "政治學": 3,
-        "行政學": 3,
-        "經濟學": 3,
-        "法學緒論": 3,
-        "中華民國憲法與政府": 3,
-        "管理學": 3,
-        "統計學" : 3,
-        "社會科學研究法": 3,
-        "專題與實習": 3,
-        "組織理論與管理": 3,
-        "公共管理": 2,
-        
-        
+    "生命科學領域": {
+        "ESG與永續生活設計": 2,
+        "水資源利用與保育": 2,
+        "臺灣自然保育議題": 2,
+        "海洋生命科學導論": 2,
+        "生命教育": 2,
+        "大學生的幸福學": 2,
+        "生死學": 2,
+        "生物科技的應用": 2,
+        "運動與人生": 2,
+        "運動的藝術與實踐": 2
     },
-    "系核心課程": {
-        "組織管理學群": {"組織理論與管理": 3},
-        "公私決策學群": {"公共政策(一)": 2},
-        "地區發展與行銷學群": {"行銷管理": 3}
+    "科技探索領域": {
+        "AI人文藝術之應用": 2,
+        "AI遇見設計思考": 2,
+        "大數據分析概論": 2,
+        "生成式AI之運用": 2,
+        "計算機概論與 Python 程式設計": 2,
+        "機器學習概論": 2,
+        "機器人思維與設計": 2,
+        "網路資料探勘與分析": 2,
+        "網頁設計與網站建置概論": 2,
+        "物聯網應用": 2,
+        "行動裝置程式設計": 2
     },
-    "通識領域": {
-        "文史哲藝術領域": {"美國文化": 2},
-        "社會脈動領域": {"法律素養": 2},
-        "生命科學領域": {"ESG與永續生活設計": 2},
-        "科技探索領域": {"AI人文藝術之應用": 2}
-    }
+    "自由選修": {}
 }
 
-# ================== 資料操作 ==================
-def init_data():
-    if not os.path.exists(DATA_FILE):
-        save_data({"已修課程": {}})
-
+# ===== 儲存/載入功能 =====
 def load_data():
-    if not os.path.exists(DATA_FILE):
-        init_data()
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"已修課程": {}}
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# ================== 工具 ==================
-def find_course(course_name):
-    # 先找結構裡有的課程
-    for cat, courses in course_structure.items():
-        if cat == "通識領域":
-            for domain, domain_courses in courses.items():
-                if course_name in domain_courses:
-                    return cat, course_name, domain_courses[course_name]
-        elif cat == "系核心課程":
-            for group, group_courses in courses.items():
-                if course_name in group_courses:
-                    return f"{cat} - {group}", course_name, group_courses[course_name]
-        else:
-            if course_name in courses:
-                return cat, course_name, courses[course_name]
-    # 找不到就當自由選修
-    return "自由選修", course_name, 0
-
-# ================== Streamlit App ==================
-st.set_page_config(page_title="畢業學分檢查系統", layout="wide")
-st.title("🎓 畢業學分檢查系統")
+# ===== 主頁 =====
+st.title("🎓 行政管理學系 通識與自由選修管理系統")
 
 data = load_data()
+taken = data["已修課程"]
 
-menu = st.sidebar.radio("功能選擇", ["新增課程", "刪除課程", "已修課程列表", "畢業檢查"])
+st.header("📚 通識課程")
+domains = ["–", "文史哲藝術領域", "社會脈動領域", "生命科學領域", "科技探索領域"]
 
+# 用 session_state 記錄行數
+if "ge_rows" not in st.session_state:
+    st.session_state.ge_rows = [{"domain": "–", "course": "–"}]
 
-# ---------- 新增課程 ----------
-# ---------- 新增課程 ----------
-if menu == "新增課程":
-    st.subheader("➕ 新增課程（文字輸入）")
+col1, col2 = st.columns([3, 1])
+with col1:
+    if st.button("➕ 增加通識課程列"):
+        st.session_state.ge_rows.append({"domain": "–", "course": "–"})
+with col2:
+    if st.button("🗑️ 清空通識課程"):
+        st.session_state.ge_rows = [{"domain": "–", "course": "–"}]
+        # 清空資料
+        for c in list(taken.keys()):
+            if any(c in default_course_structure[d] for d in domains if d != "–"):
+                del taken[c]
+        save_data(data)
+        st.experimental_rerun()
 
-    course_input = st.text_input("輸入課程名稱")
-    
-    if course_input:
-        # 找課程
-        cat, cname, default_credit = find_course(course_input)
+new_taken = {}
 
-        # 如果是通識課程才顯示領域選擇
-        domain_input = None
-        if cat == "通識課程":
-            domain_input = st.selectbox("通識領域（可選）", [""] + list(course_structure["課程"]["通識課程"].keys()))
-
-        # 學分輸入，保底 1，避免錯誤
-        credit_input = st.number_input(
-            "學分（可自行修改）",
-            min_value=1,
-            step=1,
-            value=max(default_credit, 1)
+for i, row in enumerate(st.session_state.ge_rows):
+    st.markdown(f"**第 {i+1} 列**")
+    c1, c2, c3 = st.columns([2, 3, 1])
+    with c1:
+        domain = st.selectbox(
+            "領域", domains, key=f"domain_{i}", index=domains.index(row["domain"])
         )
+    with c2:
+        course_list = ["–"]
+        if domain != "–":
+            course_list += list(default_course_structure[domain].keys())
+        course = st.selectbox(
+            "課程名稱", course_list, key=f"course_{i}", index=course_list.index(row["course"]) if row["course"] in course_list else 0
+        )
+    with c3:
+        credit = 0
+        if domain != "–" and course != "–":
+            credit = default_course_structure[domain][course]
+            st.write(f"📘 {credit} 學分")
+        else:
+            st.write("")
 
-        if st.button("新增課程"):
-            # 儲存課程
-            data["已修課程"][cname] = {
-                "學分": credit_input,
-                "領域": domain_input if domain_input else None,
-                "分類": cat
-            }
-            save_data(data)
-            st.success(f"✅ 已新增：{cname} ({credit_input}學分)，分類：{cat}")
+    # 更新已修課紀錄
+    if domain != "–" and course != "–":
+        new_taken[course] = credit
 
+st.header("📝 自由選修")
+if "free_rows" not in st.session_state:
+    st.session_state.free_rows = [{"name": "", "credit": ""}]
 
-# ---------- 刪除課程 ----------
-elif menu == "刪除課程":
-    st.subheader("🗑 刪除課程")
-    if data["已修課程"]:
-        name = st.text_input("輸入要刪除的課程名稱")
-        if st.button("刪除") and name in data["已修課程"]:
-            del data["已修課程"][name]
-            save_data(data)
-            st.success(f"🗑 已刪除課程：{name}")
-        elif st.button("刪除") and name:
-            st.warning("⚠️ 找不到課程")
-    else:
-        st.info("目前沒有已修課程可以刪除！")
+col1, col2 = st.columns([3, 1])
+with col1:
+    if st.button("➕ 增加自由選修列"):
+        st.session_state.free_rows.append({"name": "", "credit": ""})
+with col2:
+    if st.button("🗑️ 清空自由選修"):
+        st.session_state.free_rows = [{"name": "", "credit": ""}]
+        for c in list(taken.keys()):
+            if c not in sum([list(default_course_structure[d].keys()) for d in domains if d != "–"], []):
+                del taken[c]
+        save_data(data)
+        st.experimental_rerun()
 
-# ---------- 已修課程列表 ----------
-elif menu == "已修課程列表":
-    st.subheader("📚 已修課程")
-    if data["已修課程"]:
-        for c, info in data["已修課程"].items():
-            st.write(f"- {c} ({info['學分']} 學分) 分類：{info.get('分類','自由')}，領域：{info.get('領域','無')}")
-    else:
-        st.info("尚未加入課程")
+for i, row in enumerate(st.session_state.free_rows):
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        name = st.text_input("課程名稱", value=row["name"], key=f"free_name_{i}")
+    with c2:
+        credit = st.number_input("學分", min_value=0, max_value=10, step=1, value=int(row["credit"] or 0), key=f"free_credit_{i}")
+    if name.strip():
+        new_taken[name.strip()] = credit
 
-# ---------- 畢業檢查 ----------
-elif menu == "畢業檢查":
-    st.subheader("📊 畢業檢查報告")
-    total_credits = sum(info["學分"] for info in data["已修課程"].values())
-    st.metric("已修總學分", total_credits)
+# 更新資料並儲存
+data["已修課程"] = new_taken
+save_data(data)
 
-    # 系核心學群檢查
-    st.write("### 📚 系核心學群檢查")
-    for group, courses in course_structure["系核心課程"].items():
-        group_total = sum(info["學分"] for c, info in data["已修課程"].items() if c in courses)
-        st.metric(group, f"{group_total} 學分", delta="需求 ≥ 6 學分")
+# 顯示統計
+st.subheader("📈 統計")
+total = sum(new_taken.values())
+st.write(f"**目前已修學分：{total} 學分**")
 
-    # 通識檢查
-    st.write("### 🌍 通識領域檢查")
-    for domain, domain_courses in course_structure["通識領域"].items():
-        domain_total = sum(info["學分"] for c, info in data["已修課程"].items() if c in domain_courses)
-        st.metric(domain, f"{domain_total} 學分", delta="需求 ≥ 2")
+st.download_button(
+    "💾 下載 my_courses.json",
+    json.dumps(data, ensure_ascii=False, indent=4),
+    "my_courses.json",
+    mime="application/json"
+)
 
-    # 自由選修學分
-    free_total = sum(info["學分"] for c, info in data["已修課程"].items() if info["分類"] == "自由選修")
-    st.metric("自由選修", free_total)
+# 匯入畢業條件檢查（簡化版：呼叫舊函式或外部整合）
+if st.button("🎓 檢查畢業條件（完整報告）"):
+    st.write("請在整合版 Python 程式中呼叫 `graduation_check()` 查看詳細報告。")
+    st.write("（此介面僅管理通識與自由選修；完整檢查請執行主程式。）")
