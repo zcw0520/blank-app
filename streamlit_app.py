@@ -5,6 +5,12 @@ import os
 # ---------- 資料檔 ----------
 DATA_FILE = "courses_data.json"
 
+# ---------- 預設課程類別 ----------
+CATEGORY_OPTIONS = [
+    "院核心", "系必修", "系選修", "組織管理學群", "公私決策學群",
+    "地區發展與行銷學群", "通識", "自由選修"
+]
+
 # ---------- 讀取/儲存 ----------
 def load_data():
     if os.path.exists(DATA_FILE):
@@ -36,10 +42,10 @@ menu = st.sidebar.selectbox("選單", [
 if menu == "新增課程":
     course_name = st.text_input("課程名稱")
     course_credit = st.number_input("學分", min_value=1, max_value=10, value=2, step=1)
-    course_category = st.text_input("類別 (如: 通識、自由選修、院核心...)")
+    course_category = st.selectbox("類別", CATEGORY_OPTIONS)
     if st.button("新增課程"):
-        if not course_name or not course_category:
-            st.warning("請輸入課程名稱和類別")
+        if not course_name:
+            st.warning("請輸入課程名稱")
         else:
             data["已修課程"][course_name] = {
                 "學分": course_credit,
