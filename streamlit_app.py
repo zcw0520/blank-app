@@ -6,50 +6,29 @@ DATA_FILE = "courses_data.json"
 
 # ---------- 行政管理系完整課程表 ----------
 COURSE_STRUCTURE = {
-    "校核心必修": {
-        "中文閱讀與書寫(一)":2, "中文閱讀與書寫(二)":2,
-        "英文(一)":2, "英文(二)":2,
-        "體育(一)":1, "體育(二)":1
-    },
-    "院核心必修": {
-        "組織與社會":2, "運算思維與程式設計":2
-    },
-    "系基礎必修": {
-        "政治學":3, "行政學":3, "經濟學":3, "法學緒論":3,
-        "中華民國憲法與政府":3, "管理學":3, "統計學":3,
-        "社會科學研究法":3, "專題與實習":3
-    },
-    "系基礎選修": {
-        "企業概論":3, "社會學":3, "會計學":3, "應用統計學":3,
-        "行政管理理論":2, "政治經濟學":3, "行政法(一)":2,
-        "民法(一)":2, "行政法(二)":2, "民法(二)":2,
-        "財政學":3, "公共經濟學":3, "刑法":3, "第三部門":2,
-        "專門議題研究":2, "國際關係":2, "專業英文":2
-    },
-    "組織管理學群": {
-        "組織理論與管理":3, "公共管理":2,
-        "組織行為":3, "人力資源管理":3
-    },
-    "公私決策學群": {
-        "公共政策(一)":2, "公共政策(二)":2
-    },
-    "地區發展與行銷學群": {
-        "行銷管理":3
-    },
-    "通識文史哲藝術": {
-        "美國文化":2, "英文小品文賞析":2
-    },
-    "通識社會脈動": {
-        "法律素養":2, "犯罪、法律與人權":2
-    },
-    "通識生命科學": {
-        "ESG與永續生活設計":2
-    },
-    "通識科技探索": {
-        "AI人文藝術之應用":2
-    },
+    "校核心必修": {"中文閱讀與書寫(一)":2, "中文閱讀與書寫(二)":2,
+                   "英文(一)":2, "英文(二)":2,
+                   "體育(一)":1, "體育(二)":1},
+    "院核心必修": {"組織與社會":2, "運算思維與程式設計":2},
+    "系基礎必修": {"政治學":3, "行政學":3, "經濟學":3, "法學緒論":3,
+                  "中華民國憲法與政府":3, "管理學":3, "統計學":3,
+                  "社會科學研究法":3, "專題與實習":3},
+    "系基礎選修": {"企業概論":3, "社會學":3, "會計學":3, "應用統計學":3,
+                   "行政管理理論":2, "政治經濟學":3, "行政法(一)":2,
+                   "民法(一)":2, "行政法(二)":2, "民法(二)":2,
+                   "財政學":3, "公共經濟學":3, "刑法":3, "第三部門":2,
+                   "專門議題研究":2, "國際關係":2, "專業英文":2},
+    "組織管理學群": {"組織理論與管理":3, "公共管理":2, "組織行為":3, "人力資源管理":3},
+    "公私決策學群": {"公共政策(一)":2, "公共政策(二)":2},
+    "地區發展與行銷學群": {"行銷管理":3},
+    "通識文史哲藝術": {"美國文化":2, "英文小品文賞析":2},
+    "通識社會脈動": {"法律素養":2, "犯罪、法律與人權":2},
+    "通識生命科學": {"ESG與永續生活設計":2},
+    "通識科技探索": {"AI人文藝術之應用":2},
     "自由選修": {}
 }
+
+GENERAL_ED_DOMAINS = ["通識文史哲藝術","通識社會脈動","通識生命科學","通識科技探索","自由選修"]
 
 # ---------- 讀取/儲存 ----------
 def load_data():
@@ -69,8 +48,7 @@ def categorize_course(name):
     for cat, courses in COURSE_STRUCTURE.items():
         if name in courses:
             return cat, courses[name]
-    # 不在已知課表 -> 判斷自由選修
-    return "自由選修", 0
+    return None, 0  # 不在已知課表
 
 # ---------- 計算 ----------
 def total_credits():
@@ -80,11 +58,10 @@ def credits_in_category(category):
     return sum(c["學分"] for c in data["已修課程"].values() if c["類別"]==category)
 
 def check_general_ed():
-    domains = ["通識文史哲藝術","通識社會脈動","通識生命科學","通識科技探索"]
-    domain_credits = {d:0 for d in domains}
+    domain_credits = {d:0 for d in GENERAL_ED_DOMAINS}
     for c, info in data["已修課程"].items():
-        if info["類別"].startswith("通識"):
-            domain_credits[info["類別"]]+=info["學分"]
+        if info["類別"] in domain_credits:
+            domain_credits[info["類別"]] += info["學分"]
     total = sum(domain_credits.values())
     domain_count = sum(1 for v in domain_credits.values() if v>0)
     return total, domain_count, domain_credits
@@ -97,13 +74,22 @@ menu = st.sidebar.selectbox("選單", ["新增課程","刪除課程","已修課�
 # ---------- 新增課程 ----------
 if menu=="新增課程":
     course_name = st.text_input("課程名稱")
-    course_credit = st.number_input("學分(如未知可先填0)", min_value=0, max_value=10, value=0, step=1)
+    cat_auto, credit_auto = categorize_course(course_name)
+    
+    if cat_auto is None:
+        # 不在已知課程 -> 提供選單選擇領域
+        cat = st.selectbox("類別", GENERAL_ED_DOMAINS)
+        credit = st.number_input("學分", min_value=0, max_value=10, value=2, step=1)
+    else:
+        cat = cat_auto
+        credit = credit_auto
+        st.info(f"已自動分類：{cat}，學分：{credit}")
+
     if st.button("新增課程"):
-        cat, default_credit = categorize_course(course_name)
-        credit = course_credit if course_credit>0 else default_credit
-        data["已修課程"][course_name]={"學分":credit,"類別":cat}
-        save_data(data)
-        st.success(f"已新增課程：{course_name} ({credit} 學分) 類別：{cat}")
+        if course_name:
+            data["已修課程"][course_name]={"學分":credit,"類別":cat}
+            save_data(data)
+            st.success(f"已新增課程：{course_name} ({credit} 學分) 類別：{cat}")
 
 # ---------- 刪除 ----------
 elif menu=="刪除課程":
