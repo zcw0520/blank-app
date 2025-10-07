@@ -141,7 +141,7 @@ elif menu=="畢業檢查":
         st.write(f"地區發展與行銷學群：{group3}/10")
 
         ge_total, ge_domains, domain_credits = check_general_ed()
-        st.write(f"通識選修已修 {ge_total}/18 學分，涵蓋 {ge_domains} 個領域")
+        st.write(f"通識選修已修 {ge_total}/18 學分，涵蓋 {ge_domains} /3 個領域")
         for d, c in domain_credits.items():
             st.write(f"- {d}: {c} 學分")
 
