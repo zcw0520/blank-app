@@ -28,7 +28,8 @@ COURSE_STRUCTURE = {
     "自由選修": {}
 }
 
-GENERAL_ED_DOMAINS = ["通識文史哲藝術","通識社會脈動","通識生命科學","通識科技探索","自由選修"]
+GENERAL_ED_DOMAINS = ["通識文史哲藝術","通識社會脈動","通識生命科學","通識科技探索"]
+FREE_ELECTIVE = "自由選修"
 
 # ---------- 讀取/儲存 ----------
 def load_data():
@@ -67,7 +68,7 @@ def check_general_ed():
     return total, domain_count, domain_credits
 
 # ---------- Streamlit ----------
-st.title("學分計算機")
+st.title("課程登錄與畢業檢查")
 
 menu = st.sidebar.selectbox("選單", ["新增課程","刪除課程","已修課程列表","總學分","畢業檢查"])
 
@@ -76,20 +77,19 @@ if menu=="新增課程":
     course_name = st.text_input("課程名稱")
     cat_auto, credit_auto = categorize_course(course_name)
     
-    if cat_auto is None:
-        # 不在已知課程 -> 提供選單選擇領域
-        cat = st.selectbox("類別", GENERAL_ED_DOMAINS)
+    if cat_auto is None and course_name:
+        # 不在已知課程 -> 提供選單選擇通識領域或自由選修
+        cat = st.selectbox("類別", GENERAL_ED_DOMAINS + [FREE_ELECTIVE])
         credit = st.number_input("學分", min_value=0, max_value=10, value=2, step=1)
-    else:
+    elif course_name:
         cat = cat_auto
         credit = credit_auto
         st.info(f"已自動分類：{cat}，學分：{credit}")
 
-    if st.button("新增課程"):
-        if course_name:
-            data["已修課程"][course_name]={"學分":credit,"類別":cat}
-            save_data(data)
-            st.success(f"已新增課程：{course_name} ({credit} 學分) 類別：{cat}")
+    if st.button("新增課程") and course_name:
+        data["已修課程"][course_name]={"學分":credit,"類別":cat}
+        save_data(data)
+        st.success(f"已新增課程：{course_name} ({credit} 學分) 類別：{cat}")
 
 # ---------- 刪除 ----------
 elif menu=="刪除課程":
@@ -145,7 +145,7 @@ elif menu=="畢業檢查":
         for d, c in domain_credits.items():
             st.write(f"- {d}: {c} 學分")
 
-        free_cr = credits_in_category("自由選修")
+        free_cr = credits_in_category(FREE_ELECTIVE)
         st.write(f"自由選修：{free_cr}/20")
 
         professional = sum([credits_in_category(cat) for cat in ["院核心必修","系基礎必修","系基礎選修","組織管理學群","公私決策學群","地區發展與行銷學群"]])
