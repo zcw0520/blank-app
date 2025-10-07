@@ -4,7 +4,7 @@ import os
 
 DATA_FILE = "courses_data.json"
 
-# ---------- 行政管理系完整課程表 ----------
+# ---------- 行政管理系課程表 ----------
 COURSE_STRUCTURE = {
     "校核心必修": {"中文閱讀與書寫(一)":2, "中文閱讀與書寫(二)":2,
                    "英文(一)":2, "英文(二)":2,
@@ -68,7 +68,7 @@ def check_general_ed():
     return total, domain_count, domain_credits
 
 # ---------- Streamlit ----------
-st.title("課程登錄與畢業檢查")
+st.title("行政管理系課程登錄與畢業檢查")
 
 menu = st.sidebar.selectbox("選單", ["新增課程","刪除課程","已修課程列表","總學分","畢業檢查"])
 
