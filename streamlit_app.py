@@ -193,7 +193,7 @@ def graduation_check_text(taken_dict):
     lines.append(f"- 校核心必修：已修 **{school_core_taken} / 10** 學分")
 
     # 院核心
-   院_core_taken = sum(cr for c, cr in taken_dict.items() if in_group(c, "院核心必修"))
+    院_core_taken = sum(cr for c, cr in taken_dict.items() if in_group(c, "院核心必修"))
     lines.append(f"- 院核心必修：已修 **{院_core_taken} / 4** 學分")
 
     # 系基礎
