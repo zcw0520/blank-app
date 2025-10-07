@@ -67,7 +67,7 @@ def check_general_ed():
     return total, domain_count, domain_credits
 
 # ---------- Streamlit ----------
-st.title("行政管理系課程登錄與畢業檢查")
+st.title("咪ㄉ學分計算機")
 
 menu = st.sidebar.selectbox("選單", ["新增課程","刪除課程","已修課程列表","總學分","畢業檢查"])
 
