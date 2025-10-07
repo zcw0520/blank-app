@@ -2,17 +2,73 @@ import streamlit as st
 import json
 import os
 
-# ---------- 設定檔 ----------
+# ---------- 資料檔 ----------
 DATA_FILE = "my_courses.json"
-COURSES_FILE = "courses.json"  # 你的完整課程表 JSON
 
-# ---------- 讀取課程結構 ----------
-if os.path.exists(COURSES_FILE):
-    with open(COURSES_FILE, "r", encoding="utf-8") as f:
-        course_structure = json.load(f)
-else:
-    st.error("找不到 courses.json，請放置完整課程表")
-    st.stop()
+# ---------- 內建完整課程結構 ----------
+course_structure = {
+    "文史哲藝術領域": {
+        "美國文化": 2,
+        "英文小品文賞析": 2,
+        "英語口語表達技巧": 2,
+        "旅遊英文": 2,
+        "時事英文": 2,
+        "英文口語表達技巧": 2,
+        "職場英文": 2,
+        "小說與社會關懷": 2,
+        "文學與現代生活": 2,
+        "臺灣經典文獻選讀": 2,
+        "經典文學導讀": 2,
+        "臺灣歷史與文化": 2,
+        "影像藝術思維": 2,
+        "攝影藝術": 2,
+        "空間美學": 2,
+        "音樂與人生": 2,
+        "表演藝術欣賞": 2
+    },
+    "社會脈動領域": {
+        "法律素養": 2,
+        "犯罪、法律與人權": 2,
+        "亞太地區地緣政治與中國": 2,
+        "政治學概要": 2,
+        "國際關係發展與理論": 2,
+        "臺灣主權地位的國際觀": 2,
+        "職場與法律": 2,
+        "服務學習與社會關懷": 2,
+        "理財規劃": 2,
+        "管理學概論": 2,
+        "領導藝術": 2
+    },
+    "生命科學領域": {
+        "ESG與永續生活設計": 2,
+        "水資源利用與保育": 2,
+        "臺灣自然保育議題": 2,
+        "海洋生命科學導論": 2,
+        "生命教育": 2,
+        "大學生的幸福學": 2,
+        "生死學": 2,
+        "生物科技的應用": 2,
+        "運動與人生": 2,
+        "運動的藝術與實踐": 2
+    },
+    "科技探索領域": {
+        "AI人文藝術之應用": 2,
+        "AI遇見設計思考": 2,
+        "大數據分析概論": 2,
+        "生成式AI之運用": 2,
+        "計算機概論與 Python 程式設計": 2,
+        "機器學習概論": 2,
+        "機器人思維與設計": 2,
+        "網路資料探勘與分析": 2,
+        "網頁設計與網站建置概論": 2,
+        "物聯網應用": 2,
+        "行動裝置程式設計": 2
+    },
+    "通識不分領域": {
+        "博雅教育講座": 2
+    },
+    "自由選修": {}
+}
 
 # ---------- 讀取/儲存已修課 ----------
 def load_data():
@@ -31,20 +87,6 @@ data = load_data()
 def total_credits():
     return sum(data["已修課程"].values())
 
-def credits_by_category():
-    cat_credits = {k: 0 for k in course_structure.keys()}
-    cat_credits["其他"] = 0
-    for c, cr in data["已修課程"].items():
-        found = False
-        for cat, courses in course_structure.items():
-            if c in courses:
-                cat_credits[cat] += cr
-                found = True
-                break
-        if not found:
-            cat_credits["其他"] += cr
-    return cat_credits
-
 def in_group(course, group):
     return course in course_structure.get(group, {})
 
@@ -54,25 +96,6 @@ def graduation_check():
 
     tot = total_credits()
     st.write(f"總學分： {tot} / 132")
-
-    # 校核心
-    school_core_taken = sum(cr for c, cr in taken.items() if in_group(c, "校核心必修"))
-    st.write(f"校核心必修：{school_core_taken} / 10 學分")
-
-    # 院核心
-    院_core_taken = sum(cr for c, cr in taken.items() if in_group(c, "院核心必修"))
-    st.write(f"院核心必修：{院_core_taken} / 4 學分")
-
-    # 系基礎必修與選修
-    base_required_taken = sum(cr for c, cr in taken.items() if in_group(c, "系基礎必修"))
-    base_elective_taken = sum(cr for c, cr in taken.items() if in_group(c, "系基礎選修"))
-    st.write(f"系基礎：必修 {base_required_taken}/27，選修 {base_elective_taken}/23，合計 {base_required_taken+base_elective_taken}/50")
-
-    # 三大學群
-    core_groups = ["組織管理學群", "公私決策學群", "地區發展與行銷學群"]
-    for g in core_groups:
-        v = sum(cr for c, cr in taken.items() if in_group(c, g))
-        st.write(f"{g}：已修 {v}/10 學分")
 
     # 通識
     domains = ["文史哲藝術領域", "社會脈動領域", "生命科學領域", "科技探索領域"]
