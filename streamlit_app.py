@@ -5,11 +5,52 @@ import os
 # ---------- 資料檔 ----------
 DATA_FILE = "courses_data.json"
 
-# ---------- 預設課程類別 ----------
-CATEGORY_OPTIONS = [
-    "院核心", "系必修", "系選修", "組織管理學群", "公私決策學群",
-    "地區發展與行銷學群", "通識", "自由選修"
-]
+# ---------- 課程設定（行管系精簡版示意，完整可自行擴充） ----------
+COURSE_STRUCTURE = {
+    "校核心必修": {
+        "中文閱讀與書寫(一)": 2, "中文閱讀與書寫(二)": 2,
+        "英文(一)": 2, "英文(二)": 2,
+        "體育(一)": 1, "體育(二)": 1
+    },
+    "院核心必修": {
+        "組織與社會": 2, "運算思維與程式設計": 2
+    },
+    "系基礎必修": {
+        "政治學":3, "行政學":3, "經濟學":3, "法學緒論":3,
+        "中華民國憲法與政府":3, "管理學":3, "統計學":3,
+        "社會科學研究法":3, "專題與實習":3
+    },
+    "系基礎選修": {
+        "企業概論":3, "社會學":3, "會計學":3, "應用統計學":3,
+        "行政管理理論":2, "政治經濟學":3, "行政法(一)":2,
+        "民法(一)":2, "行政法(二)":2, "民法(二)":2,
+        "財政學":3, "公共經濟學":3, "刑法":3, "第三部門":2,
+        "專門議題研究":2, "國際關係":2, "專業英文":2
+    },
+    "組織管理學群": {
+        "組織理論與管理":3, "公共管理":2,
+        "組織行為":3, "人力資源管理":3
+    },
+    "公私決策學群": {
+        "公共政策(一)":2, "公共政策(二)":2
+    },
+    "地區發展與行銷學群": {
+        "行銷管理":3
+    },
+    "通識文史哲藝術": {
+        "美國文化":2, "英文小品文賞析":2
+    },
+    "通識社會脈動": {
+        "法律素養":2, "犯罪、法律與人權":2
+    },
+    "通識生命科學": {
+        "ESG與永續生活設計":2
+    },
+    "通識科技探索": {
+        "AI人文藝術之應用":2
+    },
+    "自由選修": {}
+}
 
 # ---------- 讀取/儲存 ----------
 def load_data():
@@ -28,11 +69,21 @@ data = load_data()
 def total_credits():
     return sum(c["學分"] for c in data["已修課程"].values())
 
-def category_credits(cat_name):
-    return sum(c["學分"] for c in data["已修課程"].values() if c["類別"] == cat_name)
+def credits_in_category(category):
+    return sum(c["學分"] for c in data["已修課程"].values() if c["類別"] == category)
+
+def check_general_ed():
+    domains = ["通識文史哲藝術","通識社會脈動","通識生命科學","通識科技探索"]
+    domain_credits = {d:0 for d in domains}
+    for c, info in data["已修課程"].items():
+        if info["類別"].startswith("通識"):
+            domain_credits[info["類別"]] += info["學分"]
+    total = sum(domain_credits.values())
+    domain_count = sum(1 for v in domain_credits.values() if v>0)
+    return total, domain_count, domain_credits
 
 # ---------- Streamlit GUI ----------
-st.title("可自訂課程與畢業檢查系統")
+st.title("行政管理系課程登錄與畢業檢查")
 
 menu = st.sidebar.selectbox("選單", [
     "新增課程", "刪除課程", "已修課程列表", "總學分", "畢業檢查"
@@ -42,17 +93,14 @@ menu = st.sidebar.selectbox("選單", [
 if menu == "新增課程":
     course_name = st.text_input("課程名稱")
     course_credit = st.number_input("學分", min_value=1, max_value=10, value=2, step=1)
-    course_category = st.selectbox("類別", CATEGORY_OPTIONS)
+    category = st.selectbox("類別", list(COURSE_STRUCTURE.keys()))
     if st.button("新增課程"):
         if not course_name:
             st.warning("請輸入課程名稱")
         else:
-            data["已修課程"][course_name] = {
-                "學分": course_credit,
-                "類別": course_category
-            }
+            data["已修課程"][course_name] = {"學分": course_credit, "類別": category}
             save_data(data)
-            st.success(f"已新增課程：{course_name} ({course_credit} 學分) 類別：{course_category}")
+            st.success(f"已新增課程：{course_name} ({course_credit} 學分) 類別：{category}")
 
 # ---------- 刪除課程 ----------
 elif menu == "刪除課程":
@@ -75,7 +123,7 @@ elif menu == "已修課程列表":
 
 # ---------- 總學分 ----------
 elif menu == "總學分":
-    st.write(f"總學分： {total_credits()}")
+    st.write(f"目前總學分： {total_credits()}")
 
 # ---------- 畢業檢查 ----------
 elif menu == "畢業檢查":
@@ -83,28 +131,54 @@ elif menu == "畢業檢查":
     if not data["已修課程"]:
         st.write("尚未登錄任何課程")
     else:
-        st.write(f"總學分： {total_credits()}")
-        # 統計每個類別學分
-        categories = {}
-        for c in data["已修課程"].values():
-            cat = c["類別"]
-            categories[cat] = categories.get(cat, 0) + c["學分"]
+        tot = total_credits()
+        st.write(f"總學分： {tot} / 132")
 
-        st.write("各類別學分：")
-        for cat, cr in categories.items():
-            st.write(f"- {cat}: {cr} 學分")
+        # 校核心
+        school_core = credits_in_category("校核心必修")
+        st.write(f"校核心必修：{school_core} / 10")
 
-        # 假設畢業門檻設定
-        graduation_req = {
-            "院核心": 10,
-            "系必修": 40,
-            "自由選修": 20,
-            "通識": 30
-        }
-        st.write("畢業檢查狀態：")
-        for cat, req in graduation_req.items():
-            earned = categories.get(cat, 0)
-            if earned >= req:
-                st.success(f"{cat} 已達標 ({earned}/{req} 學分)")
-            else:
-                st.warning(f"{cat} 尚缺 {req-earned} 學分 ({earned}/{req})")
+        # 院核心
+       院_core = credits_in_category("院核心必修")
+        st.write(f"院核心必修：{院_core} / 4")
+
+        # 系基礎
+        sys_base_req = credits_in_category("系基礎必修")
+        sys_base_ele = credits_in_category("系基礎選修")
+        st.write(f"系基礎必修：{sys_base_req}/27；系基礎選修：{sys_base_ele}/23")
+
+        # 三大學群
+        group1 = credits_in_category("組織管理學群")
+        group2 = credits_in_category("公私決策學群")
+        group3 = credits_in_category("地區發展與行銷學群")
+        st.write(f"組織管理學群：{group1}/10")
+        st.write(f"公私決策學群：{group2}/10")
+        st.write(f"地區發展與行銷學群：{group3}/10")
+
+        # 通識
+        ge_total, ge_domains, domain_credits = check_general_ed()
+        st.write(f"通識選修已修 {ge_total}/18 學分，涵蓋 {ge_domains} 個領域（至少3個領域）")
+        for d, c in domain_credits.items():
+            st.write(f"- {d}: {c} 學分")
+
+        # 自由選修
+        free_cr = credits_in_category("自由選修")
+        st.write(f"自由選修：{free_cr}/20")
+
+        # 專業課程總學分
+        professional = sum([
+            credits_in_category("院核心必修"),
+            credits_in_category("系基礎必修"),
+            credits_in_category("系基礎選修"),
+            credits_in_category("組織管理學群"),
+            credits_in_category("公私決策學群"),
+            credits_in_category("地區發展與行銷學群")
+        ])
+        st.write(f"專業課程總學分（院核心+系基礎+三大學群）：{professional}/80")
+
+        # 最終判定
+        ok = (tot>=132 and school_core>=10 and 院_core>=4 and
+              sys_base_req>=27 and sys_base_ele>=23 and
+              group1>=10 and group2>=10 and group3>=10 and
+              ge_total>=18 and ge_domains>=3 and free_cr>=20 and professional>=80)
+        st.write("➡️ 畢業條件整體檢查：", "✅ 已達成" if ok else "⚠️ 尚未達成")
